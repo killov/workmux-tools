@@ -14,12 +14,14 @@ workmux-tools/
 │   ├── server.mjs         MCP server
 │   ├── package.json
 │   └── README.md
+├── gws/                   Google Workspace — Drive, Sheets, Docs, Gmail, Calendar… through the gws CLI
 └── <your-tool>/ ...
 ```
 
 | Tool | What it does |
 | --- | --- |
 | [`solidcraft`](solidcraft/) | [SolidCraft](https://solidcraft.io) parametric CAD: design parts, measure, render PNG, export STL/STEP/3MF/GLB |
+| [`gws`](gws/) | Google Workspace through the [Google Workspace CLI](https://github.com/googleworkspace/cli): Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, Chat… Generic `run` / `schema` / `help` tools; auth by a WorkMux OAuth token, an access token or a service account key (all optional secrets) |
 
 ## Add a tool to WorkMux
 
@@ -60,8 +62,9 @@ Create a folder with a `workmux-tool.json`, a `Dockerfile` and the MCP server. T
 }
 ```
 
-Secrets are declared by name only (`"secrets": [{ "env": "API_KEY", "description": "..." }]`); their values are
-picked from the project's passwords in WorkMux. Never put secrets into this repository — it is public.
+Secrets are declared by name only (`"secrets": [{ "env": "API_KEY", "description": "...", "required": false }]`);
+their values are picked from the project's passwords in WorkMux. A required secret (the default) blocks the build
+until it is set, so mark secrets the tool can start without as `"required": false`. Never put secrets into this repository — it is public.
 
 ### The contract
 
@@ -83,7 +86,8 @@ The container belongs to one conversation thread and is deleted, with `/work`, a
 tell the bot in `instructions` to download results it needs.
 
 [`solidcraft/`](solidcraft/) is a complete example: a Node 22 server (`@modelcontextprotocol/sdk`) that wraps a
-stdio MCP server, confines paths to `/work` and turns inline images into files.
+stdio MCP server, confines paths to `/work` and turns inline images into files. [`gws/`](gws/) shows how to wrap a
+plain CLI with a few generic tools and optional credentials.
 
 ## License
 
