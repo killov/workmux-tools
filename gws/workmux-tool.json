@@ -30,6 +30,21 @@
       "required": false
     }
   ],
+  "oauth": [
+    {
+      "provider": "google",
+      "header": "x-workmux-oauth-token",
+      "scopes": [
+        "drive",
+        "spreadsheets",
+        "calendar",
+        "documents",
+        "gmail.modify",
+        "gmail.send"
+      ],
+      "description": "Google account the tool acts as (OAuth connection of the project shared with the bot)."
+    }
+  ],
   "files": {
     "accepts": [
       {
