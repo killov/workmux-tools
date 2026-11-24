@@ -91,6 +91,14 @@ const EXT_BY_FORMAT = new Map(Object.entries({
   tif: "tif", tiff: "tif", psd: "psd", psb: "psb", ora: "ora", svg: "svg", svgz: "svgz", pdf: "pdf", eps: "eps",
   ai: "ai", dxf: "dxf", fig: "fig", pptx: "pptx", deckcraft: "deckcraft",
 }));
+// Leading bytes of the formats a `base64Formats` key can stand for: one key may carry several formats (GridCraft's
+// `base64` is a PDF from file.exportPdf but an XLSX or CSV from file.saveBytes), so bytes that do not match are
+// refused instead of saved under a wrong extension.
+const MAGIC_BY_FORMAT = new Map(Object.entries({
+  pdf: Buffer.from("%PDF-"),
+  png: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  pptx: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+}));
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
 // An engine that bounces audio but cannot write MP3 (SoundCraft) gets encode_mp3 from this server, run with lame.
@@ -236,15 +244,23 @@ function externalizeJsonData(tool, text) {
     for (const [key, v] of Object.entries(node)) {
       // An app's own base64 key (e.g. `data`) only counts as file bytes next to a `format`; elsewhere it is plain data.
       if (BASE64_KEYS.has(key) && typeof v === "string" && !(APP_BASE64_KEYS.has(key) && typeof node.format !== "string")) {
-        const format = key === "pngBase64" ? "png" : typeof node.format === "string" ? node.format : BASE64_FORMATS.get(key);
+        const guessed = key !== "pngBase64" && typeof node.format !== "string";
+        const format = key === "pngBase64" ? "png" : guessed ? BASE64_FORMATS.get(key) : node.format;
         const ext = typeof format === "string" && EXT_BY_FORMAT.get(format.toLowerCase());
         if (!ext) {
           out.error = `unsupported export format ${JSON.stringify(format)}; export with a path inside ${WORK_DIR}`;
           error = true;
           continue;
         }
+        const bytes = Buffer.from(v, "base64");
+        const magic = guessed && MAGIC_BY_FORMAT.get(format);
+        if (magic && !bytes.subarray(0, magic.length).equals(magic)) {
+          out.error = `inline file data is not ${format}; export with a path inside ${WORK_DIR}`;
+          error = true;
+          continue;
+        }
         out.path = path.join(WORK_DIR, `${tool}-${stamp()}.${ext}`);
-        fs.writeFileSync(out.path, Buffer.from(v, "base64"));
+        fs.writeFileSync(out.path, bytes);
       } else {
         out[key] = walk(v);
       }

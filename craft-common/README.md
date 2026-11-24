@@ -63,7 +63,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
 | `encodeMp3` | optional, default `false`; `true` adds the bridge's own `encode_mp3` tool for an engine that bounces audio but cannot write MP3 (SoundCraft) — see below; put `lame` into `aptPackages` |
-| `base64Formats` | optional; JSON keys of file bytes in every answer of the app, also without a `format` next to them, mapped to the format of those bytes (DeckCraft `file.render` answers `{"png": ...}`, `file.saveBytes` `{"data": ...}`: `{"png": "png", "data": "deckcraft"}`); a `format` in the answer wins |
+| `base64Formats` | optional; JSON keys of file bytes in every answer of the app, also without a `format` next to them, mapped to the format of those bytes (DeckCraft `file.render` answers `{"png": ...}`, `file.saveBytes` `{"data": ...}`: `{"png": "png", "data": "deckcraft"}`); a `format` in the answer wins, bytes that do not match the mapped format are refused (see below) |
 
 ## Paths
 
@@ -88,7 +88,10 @@ An export without a destination answers JSON with the file in `dataBase64` (or `
 `base64Keys`/`base64Formats`). The bridge writes it into `/work` with the extension of its `format` and answers the
 `path` instead. A `format` outside the known export formats
 (`EXT_BY_FORMAT` in `server.mjs`) or an answer that does not parse is dropped and the call fails: file bytes never
-reach the bot inline.
+reach the bot inline. A format taken from `base64Formats` (no `format` in the answer) is checked against the leading
+bytes of the file when the bridge knows them (`pdf`, `png`, `pptx`; `MAGIC_BY_FORMAT`): one key can carry several
+formats (GridCraft's `base64` is a PDF from `file.exportPdf`, an XLSX or CSV from `file.saveBytes`), so bytes of
+another format are dropped and the call fails instead of saving them under a wrong extension.
 
 ## MP3 export
 

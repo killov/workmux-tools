@@ -1,0 +1,15 @@
+{
+  "app": "gridcraft",
+  "name": "GridCraft",
+  "repo": "storytold/gridcraft",
+  "version": "0.19.1",
+  "sha256": {
+    "x86_64": "3e9b093ee3bed8b1f008ea56c8d60e6a96890e24317be2bbb93e431f3c9d8112",
+    "aarch64": "e029015bf646f05937f49c4c205fae75aabde73484967580b438a77e144e764f"
+  },
+  "aptPackages": [],
+  "hideTools": ["^screenshot$"],
+  "callTimeoutMs": 300000,
+  "engineRoots": false,
+  "base64Formats": { "base64": "pdf" }
+}

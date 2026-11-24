@@ -31,7 +31,7 @@ server.setRequestHandler(CallToolRequestSchema, (req) => {
     echo: () => JSON.stringify(args),
     export_bad: () => '{"format":"png","dataBase64":"aGVsbG8gd29ybGQ=',
     export_fmt: () => JSON.stringify({ format: args.format, dataBase64: "aGk=" }),
-    export_png: () => JSON.stringify({ png: "aGk=", width: 2 }),
+    export_png: () => JSON.stringify({ png: "iVBORw0KGgpoaQ==", width: 2 }),
   }[req.params.name];
   if (!text) return { content: [{ type: "text", text: `unknown tool ${req.params.name}` }], isError: true };
   return { content: [{ type: "text", text: text() }] };

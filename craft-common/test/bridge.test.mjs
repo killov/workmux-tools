@@ -218,7 +218,15 @@ describe("inline exports", () => {
     assert.equal(out.png, undefined);
     assert.equal(out.width, 2);
     assert.match(out.path, /\.png$/);
-    assert.equal(fs.readFileSync(out.path, "utf8"), "hi");
+    assert.equal(fs.readFileSync(out.path, "latin1"), "\x89PNG\r\n\x1a\nhi");
+  });
+
+  test("base64Formats bytes that are not of the format are refused and write no file", async () => {
+    const r = await sess.call("echo", { png: "aGk=" });
+    assert.equal(r.isError, true);
+    assert.doesNotMatch(r.text, /aGk=/);
+    assert.match(r.text, /inline file data is not png/);
+    assert.deepEqual(fs.readdirSync(bridge.work).filter((f) => f.startsWith("echo-")), []);
   });
 });
 

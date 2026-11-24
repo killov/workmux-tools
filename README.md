@@ -26,6 +26,7 @@ workmux-tools/
 ├── wordcraft/               WordCraft — word processor (ArtCraft), built from craft-common/
 ├── soundcraft/              SoundCraft — DAW: record, edit and mix audio (ArtCraft), built from craft-common/
 ├── deckcraft/               DeckCraft — presentations (ArtCraft), built from craft-common/
+├── gridcraft/               GridCraft — spreadsheets and data analysis (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -43,6 +44,7 @@ workmux-tools/
 | [`wordcraft`](wordcraft/) | [WordCraft](https://getartcraft.com/apps/wordcraft) word processor (ArtCraft): open DOCX/ODT/RTF/Markdown, styles and headings, tables, lists, track changes, export DOCX/ODT/PDF |
 | [`soundcraft`](soundcraft/) | [SoundCraft](https://getartcraft.com/apps/soundcraft) DAW (ArtCraft): import WAV/MP3/FLAC/OGG, strip silence, trim, fades, mix, normalize, bounce WAV/FLAC/MP3 |
 | [`deckcraft`](deckcraft/) | [DeckCraft](https://getartcraft.com/apps/deckcraft) presentations (ArtCraft): open PPTX, slides with layouts, text, shapes, pictures, tables, charts, themes, transitions, export PPTX/PDF/PNG |
+| [`gridcraft`](gridcraft/) | [GridCraft](https://getartcraft.com/apps/gridcraft) spreadsheets (ArtCraft): open XLSX/ODS/CSV, formulas, tables, sort/filter, pivot tables and charts, export XLSX/CSV/PDF |
 
 ## Add a plugin to WorkMux
 

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "gridcraft",
+  "name": "GridCraft",
+  "description": "Headless spreadsheet (GridCraft from ArtCraft, open source, written in Rust). Formulas, tables, sorting and filtering, pivot tables and charts; opens XLSX, ODS and CSV; saves XLSX and CSV and exports PDF.",
+  "instructions": "GridCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's spreadsheet (.xlsx, .ods, .csv) to /work and open it: open_workbook {\"path\":\"/work/data.csv\"} (a CSV opens as one sheet named after the file). Or start an empty one with new_workbook {}.\n2. Look at the data first: inspect_workbook {} shows the sheets, used ranges, tables and charts; read_range {\"range\":\"A1:D20\"} returns the values (\"Sheet2!A1:B3\" for another sheet). Enter values and formulas with write_range or set_cell (text starting with = is a formula), try a formula with evaluate_formula.\n3. Pivot table and chart: execute_command {\"command\":\"insert.pivotTable\",\"params\":{\"rows\":[\"Region\"],\"columns\":[\"Product\"],\"values\":[{\"field\":\"Sales\",\"func\":\"sum\"}]}} builds it on a new sheet from the data around the selection and answers its sheet and range; then execute_command {\"command\":\"insert.pivotChart\",\"params\":{\"type\":\"column\",\"title\":\"Sales by region\"}}. For a chart of plain data use insert_chart {\"range\":\"A1:B10\",\"type\":\"column\",\"title\":\"...\"}. create_table, sort_range, filter and format_range cover the common rest.\n4. Everything else (conditional formatting, number formats, data validation, find and replace, remove duplicates…) is an engine command: list_commands {\"search\":\"duplicate\"} — the argument is search, always pass one, never list all — then execute_command {\"command\":...,\"params\":{...}}. list_functions {\"search\":\"lookup\"} lists worksheet functions.\n5. Save always with a path in /work, using new file names, never overwriting the user's input: save_workbook {\"path\":\"/work/result.xlsx\"} (all sheets, pivot tables and charts); save_workbook {\"path\":\"/work/result.csv\"} writes the active sheet only (switch with select {\"range\":\"Sheet1!A1\"}); PDF with execute_command {\"command\":\"file.exportPdf\",\"params\":{\"path\":\"/work/result.pdf\",\"sheets\":\"all\"}}.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. Any text argument that starts with / or ../ (also a cell value in write_range or set_cell) is checked as a file path and refused when it points outside /work, so rephrase such text; formulas such as =A1/B1 start with = and are fine. File bytes are never returned inline: file.saveBytes is refused, save with save_workbook and a path instead. A new MCP session (e.g. after a reconnect) starts with no open workbook, so save an .xlsx after each stage and reopen it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 1
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "xlsx", "description": "Excel workbook to analyse or edit" },
+      { "type": "ods", "description": "OpenDocument spreadsheet to analyse or edit" },
+      { "type": "csv", "description": "Table data to analyse" }
+    ],
+    "returns": [
+      { "type": "xlsx", "description": "Saved Excel workbook with pivot tables and charts" },
+      { "type": "csv", "description": "One sheet saved as CSV" },
+      { "type": "pdf", "description": "Workbook exported as PDF" }
+    ]
+  }
+}
