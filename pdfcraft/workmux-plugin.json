@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "pdfcraft",
   "name": "PdfCraft",
   "description": "Headless PDF workbench (PdfCraft from ArtCraft, open source, written in Rust). Opens PDFs, merges files and images into one PDF, splits, extracts, reorders, rotates, inserts and deletes pages, password-protects and unlocks, redacts, adds headers, footers, watermarks, Bates numbers, bookmarks, comments and form fields, fills and signs forms, extracts text, checks PDF/A and accessibility, renders PNG previews and saves PDF, PNG, text and Word.",

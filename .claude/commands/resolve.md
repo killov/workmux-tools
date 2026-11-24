@@ -9,7 +9,7 @@ Vyřeš zadání spuštěním **Workflow** `resolve` (`.claude/workflows/resolve
 Ten deterministicky odjede orchestraci: levná **triáž** (potřebuje to architekta?) →
 u těžkého tasku **Zdena-ARCH** naplánuje → smyčka
 **Zdena-DEV** (napíše/opraví kód) → **GATE** (`.claude/scripts/plugin-gate.mjs`:
-git diff, manifest proti schématu WorkMux, docker build změněných pluginů, MCP smoke
+git diff + bump `pluginVersion` proti base, manifest proti schématu WorkMux, docker build změněných pluginů, MCP smoke
 `initialize` + `tools/list`) → **Zdena-CR** (nekompromisní review) → až po **CR: APPROVE**
 se pustí **Zdena-QA** (ukázková úloha přes MCP pluginu: vstup do `/work`, tooly,
 kontrola výstupního souboru), dokud není **CR: APPROVE i QA: PASS** (max 20 kol).
@@ -108,10 +108,12 @@ launchi**:
 - **Triáž je deterministická** (heuristika ve skriptu). `light` = krátké zadání s
   konkrétní kotvou (1–3 soubory) mimo seamy (kontrakt kontejneru, auth, nový plugin) →
   ARCH se přeskočí. V pochybnostech jede `heavy`.
-- **GATE měří z repa, ne z DEVova self-reportu**: `plugin-gate.mjs changed` (git),
+- **GATE měří z repa, ne z DEVova self-reportu**: `plugin-gate.mjs changed` (git; změněná
+  složka pluginu mimo `*.md` musí mít proti merge-base s masterem vyšší `pluginVersion`),
   `validate` (`workmux-plugin.json` proti `https://app.workmux.com/schemas/workmux-plugin.v1.json`,
   fallback `workmux-tool.json`, + konvence: Dockerfile `HEALTHCHECK`/`WORKDIR /work`/ne-root,
-  README tabulka, sha256 u downloadů), pro pluginy se změnou mimo dokumentaci `docker`
+  README tabulka, sha256 u downloadů, `pluginVersion`), pro pluginy se změnou mimo dokumentaci
+  a samotný bump verze `docker`
   (build → run → `/healthz` → MCP `initialize` + `tools/list` + 404 na neznámou session
   → SIGTERM). Bez dockeru staví kontejner přes `run_session_container` a pouští `smoke`.
 - **`QA: PASS` bez doběhnuté ukázkové úlohy neexistuje.** Zdena-QA staví kontejner

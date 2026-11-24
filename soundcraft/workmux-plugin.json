@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "soundcraft",
   "name": "SoundCraft",
   "description": "Headless digital audio workstation (SoundCraft from ArtCraft, open source, written in Rust). Imports WAV, MP3, FLAC and OGG audio onto tracks, edits clips — strip silence, trim, separate, move, fades, clip gain — and mixes tracks with volume, pan, EQ, dynamics and reverb plugins and automation through the 480+ commands of the desktop app, bounces the mix to WAV or FLAC with optional peak normalization and encodes it to MP3.",

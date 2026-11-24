@@ -2,7 +2,9 @@
 // GATE workflow `/resolve` pro workmux-tools: měřicí brána nad složkami pluginů.
 //
 //   node .claude/scripts/plugin-gate.mjs changed [--base <ref>]
-//       Které složky pluginů se změnily (working tree + untracked, volitelně proti <ref>).
+//       Které složky pluginů se změnily (working tree + untracked, volitelně proti <ref>)
+//       a jestli má každá změněná složka (mimo *.md) proti base zvednutou `pluginVersion`.
+//       Base = merge-base HEAD s <ref>, jinak s origin/master nebo master, nakonec HEAD.
 //   node .claude/scripts/plugin-gate.mjs validate <dir...>
 //       Manifest proti schématu WorkMux + konvence repa (Dockerfile kontrakt, README tabulka).
 //   node .claude/scripts/plugin-gate.mjs smoke <mcp-url> [--call <tool> --args '<json>']
@@ -61,7 +63,8 @@ function parseFlags(argv) {
   return { pos, flags };
 }
 
-const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
+// stderr do výjimky, ne do výstupu: chybějící ref nebo soubor na base je u kontroly verzí běžný stav.
+const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
 /** Manifest, který WorkMux čte: `workmux-plugin.json`, jinak fallback `workmux-tool.json`. */
 function manifestFile(dir) {
@@ -101,21 +104,111 @@ function changedFiles(base) {
 /** Soubor s povrchem v běžícím pluginu — všechno kromě dokumentace (stejné pravidlo jako QA ve workflow). */
 const hasRuntimeSurface = (f) => !/\.mdx?$/i.test(f) && !/(^|\/)docs?\//i.test(f);
 
+const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+
+/** Pořadí podle semver 2.0 (-1/0/1): prerelease < release, build metadata se ignorují. */
+function compareSemver(a, b) {
+  const [x, y] = [a, b].map((v) => v.match(SEMVER_RE));
+  for (let i = 1; i <= 3; i++) if (Number(x[i]) !== Number(y[i])) return Number(x[i]) < Number(y[i]) ? -1 : 1;
+  if (!x[4] || !y[4]) return Number(!x[4]) - Number(!y[4]);
+  const [px, py] = [x[4].split("."), y[4].split(".")];
+  for (let i = 0; i < Math.max(px.length, py.length); i++) {
+    if (px[i] === undefined) return -1;
+    if (py[i] === undefined) return 1;
+    if (px[i] === py[i]) continue;
+    const [nx, ny] = [/^\d+$/.test(px[i]), /^\d+$/.test(py[i])];
+    if (nx && ny) return Number(px[i]) < Number(py[i]) ? -1 : 1;
+    if (nx !== ny) return nx ? -1 : 1;
+    return px[i] < py[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+/** Commit, proti kterému se kontroluje bump verze; null = verze nejde ověřit. */
+function versionBase(ref) {
+  for (const r of ref ? [ref] : ["origin/master", "master", "HEAD"]) {
+    try {
+      return git("merge-base", "HEAD", r).trim();
+    } catch {
+      /* další kandidát */
+    }
+  }
+  return null;
+}
+
+/** Manifest složky na base; undefined = na base není (nový plugin) nebo nejde přečíst. */
+function baseManifest(base, dir) {
+  try {
+    return JSON.parse(git("show", `${base}:${dir}/${manifestFile(dir)}`));
+  } catch {
+    return undefined;
+  }
+}
+
+const withoutVersion = ({ pluginVersion, changelog, ...rest }) => rest;
+
+/** Manifest, který se proti base liší jen v `pluginVersion`/`changelog`: nejsou ve spec_hash, image je stejný. */
+function isVersionOnlyChange(file, base) {
+  const [dir, name, ...more] = file.split("/");
+  if (!base || more.length || name !== manifestFile(dir)) return false;
+  const before = baseManifest(base, dir);
+  if (!before) return false;
+  try {
+    return JSON.stringify(withoutVersion(before)) === JSON.stringify(withoutVersion(JSON.parse(fs.readFileSync(path.join(ROOT, file), "utf8"))));
+  } catch {
+    return false;
+  }
+}
+
+/** Změněná složka pluginu musí mít proti base vyšší `pluginVersion` (README „Versions and updates"). */
+function checkVersion(dir, base) {
+  const rel = `${dir}/${manifestFile(dir)}`;
+  let now = {};
+  try {
+    now = JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+  } catch {
+    /* neplatný JSON hlásí validate */
+  }
+  const to = now.pluginVersion;
+  const before = baseManifest(base, dir);
+  const from = before?.pluginVersion;
+  const r = { dir, base, from: from ?? null, to: to ?? null, ok: false };
+  if (typeof to !== "string" || !SEMVER_RE.test(to)) r.error = `${rel}: chybí platná pluginVersion (semver)`;
+  else if (typeof from !== "string" || !SEMVER_RE.test(from)) r.ok = true;
+  else if (compareSemver(to, from) <= 0) {
+    r.error = `${rel}: pluginVersion ${to} není vyšší než ${from} na base — zvedni patch (oprava, bump pinu), minor (nový tool/argument/secret, upstream release) nebo major (odebraný/přejmenovaný tool, povinný secret)`;
+  } else {
+    r.ok = true;
+    if (before.changelog === now.changelog) r.warning = `${rel}: pluginVersion ${from} → ${to} bez změny changelog`;
+  }
+  return r;
+}
+
 function cmdChanged(flags) {
   const files = changedFiles(flags.base);
+  const base = versionBase(flags.base);
   const topDirs = (list) => [...new Set(list.filter((f) => f.includes("/") && !f.startsWith(".")).map((f) => f.split("/")[0]).filter(isDir))];
   // Změna `craft-common/` se týká všech ArtCraft pluginů (sync --check ve validate, build jejich image).
   const withCraft = (dirs) => (dirs.includes(CRAFT_COMMON) ? [...new Set([...dirs, ...listPluginDirs().filter(isCraftDir)])] : dirs);
   const plugins = withCraft(topDirs(files)).filter(isPluginDir);
-  // Image se staví jen tam, kde se změnilo něco jiného než dokumentace.
-  const runtimePlugins = withCraft(topDirs(files.filter(hasRuntimeSurface))).filter(isPluginDir);
+  // Image se staví jen tam, kde se změnilo něco jiného než dokumentace a samotný bump verze.
+  const runtimePlugins = withCraft(topDirs(files.filter((f) => hasRuntimeSurface(f) && !isVersionOnlyChange(f, base)))).filter(isPluginDir);
   // Složka bez manifestu, do které přibyly soubory = nový plugin rozpracovaný bez manifestu.
   const orphanDirs = topDirs(files).filter((d) => !isPluginDir(d) && d !== CRAFT_COMMON);
+  // Bez withCraft: sync mění kopie přímo ve složkách pluginů, zapomenutý sync chytá validate.
+  const versionChecks = base ? topDirs(files.filter(hasRuntimeSurface)).filter(isPluginDir).map((d) => checkVersion(d, base)) : [];
   out(`changed files: ${files.length}`);
   out(`changed plugins: ${plugins.join(", ") || "(none)"}`);
   out(`plugins to build: ${runtimePlugins.join(", ") || "(none)"}`);
   if (orphanDirs.length) out(`folders without a manifest: ${orphanDirs.join(", ")}`);
-  finish({ cmd: "changed", ok: orphanDirs.length === 0, changedFiles: files, plugins, runtimePlugins, orphanDirs }, orphanDirs.length ? 1 : 0);
+  if (!base) out(`warn: base pro kontrolu pluginVersion nejde určit (${flags.base || "origin/master, master, HEAD"}) — verze neověřeny`);
+  for (const v of versionChecks) {
+    out(`${v.ok ? "ok  " : "FAIL"} pluginVersion ${v.dir}: ${v.from ?? "(none)"} → ${v.to ?? "(none)"}`);
+    if (v.error) out(`  error: ${v.error}`);
+    if (v.warning) out(`  warn:  ${v.warning}`);
+  }
+  const ok = orphanDirs.length === 0 && versionChecks.every((v) => v.ok);
+  finish({ cmd: "changed", ok, changedFiles: files, plugins, runtimePlugins, orphanDirs, versionBase: base, versionChecks }, ok ? 0 : 1);
 }
 const isDir = (d) => {
   try {
@@ -173,6 +266,8 @@ function conventionChecks(dir, manifest) {
     const sync = spawnSync(process.execPath, [path.join(ROOT, CRAFT_COMMON, "sync.mjs"), "--check", dir], { encoding: "utf8" });
     if (sync.status !== 0) errors.push(`${dir}: generované soubory nesedí s craft-common/ — ${(sync.stderr || sync.stdout).trim().replace(/\n/g, "; ")}`);
   }
+  // Bez pluginVersion WorkMux nepozná update a `changed` nemá co porovnat (README „Versions and updates").
+  if (manifestFile(dir) === "workmux-plugin.json" && manifest.pluginVersion === undefined) errors.push(`${dir}/workmux-plugin.json: chybí pluginVersion (semver, první verze 1.0.0)`);
   for (const s of manifest.secrets || []) {
     if (s.required === undefined) warnings.push(`secret ${s.env}: bez "required" je povinný a blokuje build — je to záměr?`);
   }
@@ -349,7 +444,7 @@ async function cmdDocker(dir, flags) {
 }
 
 function usage() {
-  out("usage: plugin-gate.mjs changed [--base <ref>] | validate [dir...] | smoke <mcp-url> [--slug s] [--call tool --args json] | docker <dir> [--call tool --args json]");
+  out("usage: plugin-gate.mjs changed [--base <ref>] (+ pluginVersion bump vs. base) | validate [dir...] | smoke <mcp-url> [--slug s] [--call tool --args json] | docker <dir> [--call tool --args json]");
   process.exit(2);
 }
 

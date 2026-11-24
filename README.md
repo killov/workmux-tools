@@ -86,6 +86,8 @@ Create a folder with a `workmux-plugin.json`, a `Dockerfile` and the MCP server.
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "my-plugin",
   "name": "My Plugin",
   "description": "What it does, for people and bots.",
@@ -127,6 +129,33 @@ tell the bot in `instructions` to download results it needs.
 [`solidcraft/`](solidcraft/) is a complete example: a Node 22 server (`@modelcontextprotocol/sdk`) that wraps a
 stdio MCP server, confines paths to `/work` and turns inline images into files. [`gws/`](gws/) shows how to wrap a
 plain CLI with a few generic tools and optional credentials.
+
+### Versions and updates
+
+`pluginVersion` is the version of the plugin (semver, the first one is `1.0.0`); `version` stays `1`, it is the
+version of the manifest format. `changelog` says what changed in this version, in a short text or an `https://` URL.
+WorkMux compares `pluginVersion` on the repository's ref with the installed one and offers an update when it is
+higher. An update keeps the plugin's id, so its secrets, OAuth connections and bots stay; running instances finish
+on the old version and switch at their next start.
+
+**Every change of the image or the manifest raises `pluginVersion`** and rewrites `changelog`:
+
+- **patch** — a fix, a dependency pin or sha256 bump that does not change the tools;
+- **minor** — a new tool or argument, a new optional secret, a new upstream release;
+- **major** — a removed or renamed tool, a changed slug, a new required secret, `persist` data the previous version
+  cannot read.
+
+A change of documentation only (`*.md`, `docs/`) needs no bump. A change of
+[`craft-common/`](craft-common/) changes every ArtCraft plugin and bumps each of their manifests. The plugin gate
+(`plugin-gate.mjs changed`) fails when a changed plugin folder has no higher `pluginVersion` than the base.
+
+`/work` belongs to one instance. Data that must outlive instances and updates (settings, caches that are expensive to
+rebuild, downloaded libraries) goes into a `persist` directory: `"persist": [{ "path": "/data", "scope": "project" }]`
+(or `"bot"`) mounts a volume at an absolute path outside `/work`. The Dockerfile creates the directory and gives it to
+the runtime user (`mkdir -p /data && chown node:node /data`). When a new version changes the layout of that data,
+`"migrate": { "command": ["node", "migrate.mjs"] }` runs once over the volumes before the switch; it must be idempotent and keep the
+data readable by the previous version, because a rollback does not undo it. Declare `persist` only for data that is
+needed: it is part of the instance fingerprint, and secrets that are written to disk at start do not belong there.
 
 ## License
 

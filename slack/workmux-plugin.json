@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "slack",
   "name": "Slack",
   "description": "Slack through the Slack Web API: send messages and thread replies, read channels and threads, search, add reactions, list channels and users. Delivers Slack events (mentions of the app, new messages in its channels and DMs, reactions) to the bot: WorkMux subscribes the webhook itself. Authenticates with a WorkMux Slack OAuth connection or a bot token secret.",

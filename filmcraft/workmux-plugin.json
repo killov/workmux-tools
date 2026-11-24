@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "filmcraft",
   "name": "FilmCraft",
   "description": "Headless video editor (FilmCraft from ArtCraft, open source, written in Rust). Imports MP4, MOV, WebM and MKV video, WAV/MP3 audio and still images, builds sequences on a multi-track timeline, cuts, trims and places clips, adds titles and shapes, transitions, effects, color grading (Lumetri), audio mixing and captions, runs any of its 700+ editor commands, renders PNG frames and exports H.264 MP4, ProRes/DNxHR MOV, GIF, WAV and MP3.",

@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "wordcraft",
   "name": "WordCraft",
   "description": "Headless word processor (WordCraft from ArtCraft, open source, written in Rust). Writes and edits documents with styles, headings, tables, lists, track changes, comments and mail merge; opens DOCX, DOC, ODT, RTF, Markdown, HTML, plain text and TeX; saves DOCX, ODT, RTF, Markdown, HTML and plain text and exports PDF and PNG page previews.",

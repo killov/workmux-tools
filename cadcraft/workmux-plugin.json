@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "cadcraft",
   "name": "CADCraft",
   "description": "Headless 2D CAD drafting app (CADCraft from ArtCraft, open source, written in Rust) with an AutoCAD-style command line. Draws floor plans and technical drawings — lines, polylines, rectangles, arcs, hatches, text, dimensions, leaders, layers and blocks — through 450+ commands and .scr scripts, opens and saves DXF and DWG, renders PNG previews and exports PDF and SVG. 2D drafting only, not 3D parametric modeling: for 3D parts use solidcraft.",
