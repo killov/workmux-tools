@@ -1,0 +1,14 @@
+{
+  "app": "deckcraft",
+  "name": "DeckCraft",
+  "repo": "storytold/deckcraft",
+  "version": "0.18.1",
+  "sha256": {
+    "x86_64": "59801c24ef5bdaf01a6a465f0e1d5f59aba36ad1e723cb833304b22d98c3f909",
+    "aarch64": "1c76f4f8c14ab61cc06e38be746f6bd7c69284dd47568455aad8c2b4103a8626"
+  },
+  "aptPackages": [],
+  "hideTools": ["^screenshot$", "^call_app$", "^pointer$", "^select_tool$", "^key$", "^type_text$"],
+  "callTimeoutMs": 300000,
+  "base64Formats": { "png": "png", "data": "deckcraft" }
+}

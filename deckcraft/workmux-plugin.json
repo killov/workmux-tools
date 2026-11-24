@@ -1,0 +1,33 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "deckcraft",
+  "name": "DeckCraft",
+  "description": "Headless presentation editor (DeckCraft from ArtCraft, open source, written in Rust). Builds and edits slide decks with layouts, text, shapes, pictures, tables, charts, themes, transitions and animations; opens PPTX; saves PPTX and exports PDF and PNG slides.",
+  "instructions": "DeckCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's .pptx to /work and open it: open_presentation {\"path\":\"/work/deck.pptx\"} (only .pptx and .deckcraft; fonts missing in the container are listed as missingFonts and drawn with a substitute). Or start a new deck with new_presentation {\"theme\":\"Harbor\"}; run_command {\"command\":\"design.themes\",\"params\":{}} lists the themes.\n2. A new deck has one title slide: inspect_slide {\"index\":0} shows its placeholders, fill them with set_text {\"id\":...,\"text\":\"...\"}. Add slides with add_slide {\"layout\":\"titleAndContent\",\"title\":\"Pricing\",\"body\":\"line 1\\nline 2\"} (one bullet per line). Slide indexes start at 0: the first slide is index 0, add_slide answers the index of the new slide. For more on a slide use add_text_box, add_shape, insert_table {\"rows\":3,\"cols\":2,\"data\":[[...]]}, insert_chart and insert_picture {\"path\":\"/work/photo.png\"} (always a path in /work, never data).\n3. Everything else (themes, transitions, animations, speaker notes, SmartArt, sections…) is an engine command: list_commands {\"filter\":\"transition\"} — always pass a filter, never list all — then run_command {\"command\":...,\"params\":{...}}, or batch for several commands at once.\n4. Check the result: inspect_document shows the slides and layouts; render_slide {\"slide\":0} saves a PNG of the slide into /work and returns its path (no inline image) — download it to look at it.\n5. Save always with a path in /work, using new file names, never overwriting the user's input: save_presentation {\"path\":\"/work/deck-edited.pptx\"}, export {\"format\":\"pdf\",\"path\":\"/work/deck.pdf\"}, export {\"format\":\"png\",\"all\":true,\"path\":\"/work/slide.png\"} (writes slide1.png, slide2.png, …).\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. Any text argument that starts with / or ../ (also the title and body of add_slide and the text of set_text) is checked as a file path and refused when it points outside /work, so rephrase such text (e.g. \"etc folder\" instead of \"/etc\"). A new MCP session (e.g. after a reconnect) starts with no open presentation, so save a .pptx after each stage and reopen it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "pptx", "description": "PowerPoint presentation to edit or convert" },
+      { "type": "png", "description": "Picture to place on a slide" },
+      { "type": "jpg", "description": "Photo to place on a slide" }
+    ],
+    "returns": [
+      { "type": "pptx", "description": "Saved PowerPoint presentation" },
+      { "type": "pdf", "description": "Presentation exported as PDF" },
+      { "type": "png", "description": "Slide exported or previewed as PNG" }
+    ]
+  }
+}

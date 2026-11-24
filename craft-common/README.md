@@ -63,6 +63,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
 | `encodeMp3` | optional, default `false`; `true` adds the bridge's own `encode_mp3` tool for an engine that bounces audio but cannot write MP3 (SoundCraft) — see below; put `lame` into `aptPackages` |
+| `base64Formats` | optional; JSON keys of file bytes in every answer of the app, also without a `format` next to them, mapped to the format of those bytes (DeckCraft `file.render` answers `{"png": ...}`, `file.saveBytes` `{"data": ...}`: `{"png": "png", "data": "deckcraft"}`); a `format` in the answer wins |
 
 ## Paths
 
@@ -83,8 +84,9 @@ under a file key (also nested lists, e.g. `listing: [[path, size]]`) are checked
 
 ## Inline exports
 
-An export without a destination answers JSON with the file in `dataBase64` (or `pngBase64`). The bridge writes it into
-`/work` with the extension of its `format` and answers the `path` instead. A `format` outside the known export formats
+An export without a destination answers JSON with the file in `dataBase64` (or `pngBase64`, or a key from
+`base64Keys`/`base64Formats`). The bridge writes it into `/work` with the extension of its `format` and answers the
+`path` instead. A `format` outside the known export formats
 (`EXT_BY_FORMAT` in `server.mjs`) or an answer that does not parse is dropped and the call fails: file bytes never
 reach the bot inline.
 

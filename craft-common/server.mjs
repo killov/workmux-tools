@@ -79,12 +79,16 @@ const FILE_LIST_KEYS = new Set(["paths", "files"]);
 // JSON keys of file bytes in the child's answers; `base64Keys` in craft.json adds keys of one app (FigCraft's export
 // answers {"format": ..., "data": ...}), a key as generic as `data` is not base64 in every app.
 const APP_BASE64_KEYS = new Set(CRAFT.base64Keys ?? []);
-const BASE64_KEYS = new Set(["dataBase64", "pngBase64", ...APP_BASE64_KEYS]);
+// `base64Formats` in craft.json maps keys that are file bytes in every answer of one app, also without a `format`
+// next to them, to the format of those bytes (DeckCraft's file.render answers {"png": ...}, file.saveBytes
+// {"data": ...}).
+const BASE64_FORMATS = new Map(Object.entries(CRAFT.base64Formats ?? {}));
+const BASE64_KEYS = new Set(["dataBase64", "pngBase64", ...APP_BASE64_KEYS, ...BASE64_FORMATS.keys()]);
 // File extension of an inline export by its `format` (the export formats of the Craft apps); others are refused.
 const EXT_BY_FORMAT = new Map(Object.entries({
   png: "png", png8: "png", jpg: "jpg", jpeg: "jpg", webp: "webp", gif: "gif", bmp: "bmp", tga: "tga", exr: "exr",
   tif: "tif", tiff: "tif", psd: "psd", psb: "psb", ora: "ora", svg: "svg", svgz: "svgz", pdf: "pdf", eps: "eps",
-  ai: "ai", dxf: "dxf", fig: "fig",
+  ai: "ai", dxf: "dxf", fig: "fig", pptx: "pptx", deckcraft: "deckcraft",
 }));
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
@@ -231,7 +235,7 @@ function externalizeJsonData(tool, text) {
     for (const [key, v] of Object.entries(node)) {
       // An app's own base64 key (e.g. `data`) only counts as file bytes next to a `format`; elsewhere it is plain data.
       if (BASE64_KEYS.has(key) && typeof v === "string" && !(APP_BASE64_KEYS.has(key) && typeof node.format !== "string")) {
-        const format = key === "pngBase64" ? "png" : node.format;
+        const format = key === "pngBase64" ? "png" : typeof node.format === "string" ? node.format : BASE64_FORMATS.get(key);
         const ext = typeof format === "string" && EXT_BY_FORMAT.get(format.toLowerCase());
         if (!ext) {
           out.error = `unsupported export format ${JSON.stringify(format)}; export with a path inside ${WORK_DIR}`;

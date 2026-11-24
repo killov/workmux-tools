@@ -22,6 +22,7 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
     { name: "echo", description: "Answers its arguments as JSON.", inputSchema: anyArgs },
     { name: "export_bad", description: "Answers inline file data that is not JSON.", inputSchema: anyArgs },
     { name: "export_fmt", description: "Answers {format, dataBase64}.", inputSchema: anyArgs },
+    { name: "export_png", description: "Answers {png, width} like DeckCraft's file.render.", inputSchema: anyArgs },
   ],
 }));
 server.setRequestHandler(CallToolRequestSchema, (req) => {
@@ -30,6 +31,7 @@ server.setRequestHandler(CallToolRequestSchema, (req) => {
     echo: () => JSON.stringify(args),
     export_bad: () => '{"format":"png","dataBase64":"aGVsbG8gd29ybGQ=',
     export_fmt: () => JSON.stringify({ format: args.format, dataBase64: "aGk=" }),
+    export_png: () => JSON.stringify({ png: "aGk=", width: 2 }),
   }[req.params.name];
   if (!text) return { content: [{ type: "text", text: `unknown tool ${req.params.name}` }], isError: true };
   return { content: [{ type: "text", text: text() }] };

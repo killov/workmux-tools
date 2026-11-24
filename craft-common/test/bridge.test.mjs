@@ -43,7 +43,7 @@ async function startBridge({ engineRoots = true, encodeMp3 = false, env = {} } =
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3 }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3, base64Formats: { png: "png" } }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -209,6 +209,16 @@ describe("inline exports", () => {
     assert.equal(JSON.parse(r.text).dataBase64, undefined);
     assert.match(r.text, /unsupported export format \\"exe\\"/);
     assert.deepEqual(exports(), before);
+  });
+
+  test("a base64Formats key becomes a file also without a format", async () => {
+    const r = await sess.call("export_png", {});
+    assert.equal(r.isError, undefined, r.text);
+    const out = JSON.parse(r.text);
+    assert.equal(out.png, undefined);
+    assert.equal(out.width, 2);
+    assert.match(out.path, /\.png$/);
+    assert.equal(fs.readFileSync(out.path, "utf8"), "hi");
   });
 });
 
