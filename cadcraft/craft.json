@@ -1,0 +1,15 @@
+{
+  "app": "cadcraft",
+  "name": "CADCraft",
+  "repo": "storytold/cadcraft",
+  "version": "0.20.1",
+  "sha256": {
+    "x86_64": "8e6ad1f487d6cd44dbcb73cd88ef1efb52252a2071094f2c23a468a641a06faa",
+    "aarch64": "ef72fd132dd5a8b49e186c2be57807a99e93df4b43496148752ce7c50a71bcad"
+  },
+  "aptPackages": [],
+  "hideTools": [],
+  "callTimeoutMs": 300000,
+  "engineRoots": false,
+  "base64Keys": ["data"]
+}

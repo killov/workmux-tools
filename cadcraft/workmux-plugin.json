@@ -1,0 +1,34 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "cadcraft",
+  "name": "CADCraft",
+  "description": "Headless 2D CAD drafting app (CADCraft from ArtCraft, open source, written in Rust) with an AutoCAD-style command line. Draws floor plans and technical drawings — lines, polylines, rectangles, arcs, hatches, text, dimensions, leaders, layers and blocks — through 450+ commands and .scr scripts, opens and saves DXF and DWG, renders PNG previews and exports PDF and SVG. 2D drafting only, not 3D parametric modeling: for 3D parts use solidcraft.",
+  "instructions": "CADCraft runs headless in your own container; every file lives in /work.\n\n1. Start a drawing. For a new one: new_drawing {\"metric\":true} (units are millimetres; draw a room of 4 × 5 m as 4000 × 5000). To edit the user's drawing, upload it to /work and open it: open {\"path\":\"/work/in.dxf\"} (DXF or DWG).\n2. Draw with AutoCAD commands, y goes up. command_line {\"text\":\"circle 0,0 500\"} types one line (spaces act as Enter); script {\"text\":\"...\"} runs several lines like a .scr file. Set the dimension scale first so that dimension text and arrows are readable at the drawing's size (dimscale 50 for a room in mm), e.g. script {\"text\":\"dimscale 50\\nrectang 0,0 4000,5000\\ndimlinear 0,0 4000,0 2000,-600\\ndimlinear 4000,0 4000,5000 4600,2500\\nzoom e\\n\"}. Points are x,y, relative @dx,dy, polar @dist<angle. When a command waits for more input, the answer shows its prompt; cancel {} aborts it.\n3. Everything else: list_commands {\"filter\":\"dim\"} (also \"layer\", \"hatch\", \"text\", \"block\", \"offset\"…) — always pass a filter, the registry has hundreds of commands — then execute {\"command\":\"layer.new\",\"params\":{\"name\":\"Walls\",\"color\":\"red\",\"current\":true}} with the params it lists.\n4. Check the result: inspect_drawing {} (entity counts, extents, layers) and query_entities {\"type\":\"Dimension\"}; render {\"background\":\"white\"} saves a PNG preview into /work and returns its path (no inline image) — download it to look at it or to show it.\n5. Save and export: save {\"path\":\"/work/plan.dxf\"}; the extension picks the format: .dxf, .dwg (both DXF/DWG 2018), .pdf, .svg, .png. For a PDF on a paper size use execute {\"command\":\"plot\",\"params\":{\"path\":\"/work/plan-a4.pdf\",\"paper\":\"ISO A4 (210.00 x 297.00 MM)\",\"fit\":true}} (list_commands {\"filter\":\"plot\"} shows the options). Use a new file name for every export.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. File commands take their path as JSON (save, open, or execute with params.path), not typed at the command line. A new MCP session (e.g. after a reconnect) starts with an empty drawing, so save a .dxf or .dwg after each stage and open it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 1024,
+    "cpus": 1
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "dxf", "description": "DXF drawing to edit (ASCII or binary)" },
+      { "type": "dwg", "description": "DWG drawing to edit" }
+    ],
+    "returns": [
+      { "type": "dxf", "description": "Drawing as DXF 2018" },
+      { "type": "dwg", "description": "Drawing as DWG 2018" },
+      { "type": "pdf", "description": "Plotted drawing as vector PDF" },
+      { "type": "svg", "description": "Drawing as SVG" },
+      { "type": "png", "description": "Rendered drawing or render preview PNG" }
+    ]
+  }
+}
