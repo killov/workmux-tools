@@ -1,0 +1,40 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "materialcraft",
+  "name": "MaterialCraft",
+  "description": "Headless procedural PBR material designer in the style of Substance Designer (MaterialCraft from ArtCraft, open source, written in Rust). Builds node graphs (uniform colors, blend, levels, gradient map, warp, pixel processor, FX map, normal…), opens SBS packages and .mcraft archives, imports bitmaps, cooks the basecolor, normal, roughness, metallic, height and ambient occlusion maps, renders a 3D preview as PNG and exports the maps as PNG, JPEG, TGA, WebP, EXR or HDR, the package as .mcraft/.sbs and a portable .mcmat material.",
+  "instructions": "MaterialCraft runs headless in your own container; every file lives in /work.\n\n1. Input (optional): upload an SBS package or a .mcraft archive to /work and open it: package_open {\"path\":\"/work/x.sbs\"}. A bitmap for the graph (scan, mask, height map): bitmap_import {\"path\":\"/work/scan.png\"} returns its resource name, the resource param of a bitmap node.\n2. New material: graph_new {\"template\":\"pbr\",\"size\":1024,\"name\":\"rust\"} creates a graph with six outputs, each fed by its own uniform node: 1 basecolor, 3 normal, 5 roughness, 7 metallic, 9 height, 11 ambientocclusion (node ids; session_inspect shows the graph with its nodes, connections and params).\n3. Build the material: node_param {\"id\":1,\"param\":\"color\",\"value\":\"#8a3b12\"} sets a uniform color (hex colors are sRGB); the gray outputs take a number 0–1: node_param {\"id\":5,\"param\":\"color\",\"value\":0.75}. Add nodes with node_add (returns {\"id\":...}) and wire them with node_connect, e.g. a darker second color blended into the basecolor: node_add {\"def\":\"uniform\",\"params\":{\"color\":\"#3a2a20\"}} → 13, node_add {\"def\":\"blend\",\"connectFrom\":{\"node\":1},\"params\":{\"opacity\":0.5}} → 14 (node 1 into its first input, foreground), node_connect {\"from\":13,\"to\":14,\"toPort\":\"background\"}, node_connect {\"from\":14,\"to\":2}. library_list {\"filter\":\"blend\"} gives a node's inputs and params — always pass a filter or a category. The library has atomic nodes only (uniform, blend, levels, curve, hsl, gradient_map, gradient_dynamic, warp, directional_warp, blur, pixel_processor, fx_map, normal, emboss, bitmap, text…), no ready-made noise or material presets: build variation from them. Everything else is an engine command: command_list {\"filter\":\"graph\"} — always pass a filter — then command_run {\"id\":...,\"params\":{...}} or command_batch {\"steps\":[...]}.\n4. Check the result: view_render {\"width\":1024,\"height\":1024,\"scene\":\"sphere\"} saves a PNG of the material on a 3D scene into /work and returns its path (no inline image); view_render {\"view\":\"2d\",\"node\":13} shows one node's output. Download it to look at it or to show it.\n5. Export the maps: outputs_export {\"dir\":\"/work/maps\",\"format\":\"png\",\"size\":1024} writes one file per connected output and answers {\"files\":[\"maps/rust_basecolor.png\",...]} — the paths in MaterialCraft's answers are relative to /work, so that file is /work/maps/rust_basecolor.png. Other formats: jpg, tga, webp, exr, hdr. A portable material for TextureCraft: material_export {\"path\":\"/work/rust.mcmat\"}. Export into a subfolder of /work, not into /work itself.\n6. To continue later: package_save {\"path\":\"/work/rust.mcraft\"} (or .sbs) and package_open it in a later session.\n7. Hand the result over: download the files from /work with plugin_download_file (e.g. /work/maps/rust_basecolor.png, /work/maps/rust_normal.png, /work/maps/rust_roughness.png).\n\nAll paths must be inside /work. A new MCP session (e.g. after a reconnect) starts with an empty package, so save .mcraft files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "sbs", "description": "Substance Designer package to open" },
+      { "type": "mcraft", "description": "MaterialCraft package archive saved earlier" },
+      { "type": "png", "description": "Bitmap to import as a graph resource (scan, mask, height map)" },
+      { "type": "jpg", "description": "Bitmap to import as a graph resource" }
+    ],
+    "returns": [
+      { "type": "png", "description": "Material map (basecolor, normal, roughness, metallic, height, ambient occlusion) or view_render 3D preview" },
+      { "type": "jpg", "description": "Material map as JPEG" },
+      { "type": "tga", "description": "Material map as TGA" },
+      { "type": "webp", "description": "Material map as WebP" },
+      { "type": "exr", "description": "Material map as OpenEXR (16/32-bit)" },
+      { "type": "hdr", "description": "Material map as Radiance HDR" },
+      { "type": "mcraft", "description": "MaterialCraft package archive to continue later" },
+      { "type": "sbs", "description": "Package as Substance Designer SBS" },
+      { "type": "mcmat", "description": "Portable cooked material (maps and exposed inputs) for TextureCraft" }
+    ]
+  }
+}

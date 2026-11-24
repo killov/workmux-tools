@@ -32,6 +32,7 @@ workmux-tools/
 ├── effectcraft/             EffectCraft — motion graphics and VFX (ArtCraft), built from craft-common/
 ├── anicraft/                AniCraft — 2D vector animation (ArtCraft), built from craft-common/
 ├── texturecraft/            TextureCraft — 3D texture painting (ArtCraft), built from craft-common/
+├── materialcraft/           MaterialCraft — procedural PBR materials (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -55,6 +56,7 @@ workmux-tools/
 | [`effectcraft`](effectcraft/) | [EffectCraft](https://getartcraft.com/apps/effectcraft) motion graphics and VFX (ArtCraft): compositions, text/shape/solid layers, keyframes and expressions, effects, import video/images/AEP/Lottie, render MP4/MOV/WebM/GIF/PNG sequence |
 | [`anicraft`](anicraft/) | [AniCraft](https://getartcraft.com/apps/anicraft) 2D vector animation (ArtCraft): draw, symbols, motion and shape tweens, import SVG/PNG/sound, export GIF/MP4/WebM/Lottie/SVG |
 | [`texturecraft`](texturecraft/) | [TextureCraft](https://getartcraft.com/apps/texturecraft) 3D texture painting (ArtCraft): import GLB/FBX/OBJ/USD, smart materials, paint, bake mesh maps, render previews, export PNG texture sets and textured GLB/USDZ |
+| [`materialcraft`](materialcraft/) | [MaterialCraft](https://getartcraft.com/apps/materialcraft) procedural materials (ArtCraft): node graphs, open SBS/.mcraft, cook PBR maps, export PNG/EXR/TGA maps, .mcmat |
 
 ## Add a plugin to WorkMux
 

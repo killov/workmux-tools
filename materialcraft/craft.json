@@ -1,0 +1,14 @@
+{
+  "app": "materialcraft",
+  "name": "MaterialCraft",
+  "repo": "storytold/materialcraft",
+  "version": "0.4.1",
+  "sha256": {
+    "x86_64": "55d66a14f1900404165cac3ca38587d78b88c4422ca5a872f2220c7115ce2287",
+    "aarch64": "72aa261383fb413fcf16c9b3330fdc367640413510b5f808572598405075316f"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_", "^view_screenshot$"],
+  "callTimeoutMs": 300000,
+  "relativePaths": true
+}

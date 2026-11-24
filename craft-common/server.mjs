@@ -110,7 +110,7 @@ const MAGIC_BY_FORMAT = new Map(Object.entries({
   pptx: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
 }));
 // Tools that answer with an inline image.
-const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot", "viewport_render"]);
+const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot", "viewport_render", "view_render"]);
 // An engine that bounces audio but cannot write MP3 (SoundCraft) gets encode_mp3 from this server, run with lame.
 const LAME = env.CRAFT_LAME_BIN || "lame";
 const execFileAsync = promisify(execFile);
