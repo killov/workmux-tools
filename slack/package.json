@@ -1,0 +1,21 @@
+{
+  "name": "workmux-plugin-slack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WorkMux plugin: Slack Web API behind a streamable HTTP MCP endpoint",
+  "license": "MIT",
+  "type": "module",
+  "main": "server.mjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "mock": "node test/mock-slack.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "3.25.76"
+  }
+}
