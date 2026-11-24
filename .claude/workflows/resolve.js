@@ -146,7 +146,7 @@ const CR_SCHEMA = {
 // `light` stojí zahozené kolo, falešné `heavy` jen jeden ARCH pass.
 // Seamy workmux-tools: kontrakt kontejneru a manifestu (co čte WorkMux), přihlašování
 // (secrets/OAuth), nový plugin a sdílený základ víc pluginů.
-const SEAM_RE = /(nový plugin|new plugin|nov[ýé] tool|společný základ|shared base|workmux-plugin\.json|schéma manifestu|manifest schema|workmux-tool\.v1|\boauth\b|\bsecrets?\b|streamable|Mcp-Session-Id|base image|multi-?arch|ArtCraft|Craft aplikac)/i
+const SEAM_RE = /(nový plugin|new plugin|nov[ýé] tool|společný základ|shared base|workmux-plugin\.json|schéma manifestu|manifest schema|workmux-plugin\.v1|workmux-tool\.v1|\boauth\b|\bsecrets?\b|streamable|Mcp-Session-Id|base image|multi-?arch|ArtCraft|Craft aplikac)/i
 const TASK_FILE_RE = /[\w./-]+\.(?:mjs|cjs|js|ts|json|md|sh|py|ya?ml)(?::\d+)?|[\w./-]*Dockerfile[\w.-]*/g
 const taskAnchorFiles = new Set((TASK.match(TASK_FILE_RE) || []).map((a) => a.split(':')[0]))
 const lightMode = TASK.length < 2000 && taskAnchorFiles.size >= 1 && taskAnchorFiles.size <= 3 && !SEAM_RE.test(TASK)

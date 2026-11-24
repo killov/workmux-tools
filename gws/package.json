@@ -1,5 +1,5 @@
 {
-  "name": "workmux-tool-gws",
+  "name": "workmux-plugin-gws",
   "version": "0.1.0",
   "private": true,
   "description": "WorkMux plugin: Google Workspace CLI (gws) behind a streamable HTTP MCP endpoint",

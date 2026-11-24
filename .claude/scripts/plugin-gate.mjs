@@ -26,7 +26,7 @@ import { mcpClient, resultText } from "./lib/mcp.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 // Pořadí = priorita: `workmux-plugin.json` (WOR-757), `workmux-tool.json` server bere jen jako fallback.
 const SCHEMAS = {
-  // Dokud schéma na produkci neexistuje, validace se jen ohlásí jako přeskočená.
+  // Nedostupné nebo neplatné schéma je chyba gate: bez něj manifest nejde ověřit.
   "workmux-plugin.json": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "workmux-tool.json": "https://app.workmux.com/schemas/workmux-tool.v1.json",
 };
@@ -178,7 +178,7 @@ async function cmdValidate(dirs) {
   const results = [];
   let ok = true;
   for (const dir of dirs) {
-    const r = { dir, errors: [], warnings: [], skipped: [] };
+    const r = { dir, errors: [], warnings: [] };
     results.push(r);
     const manifests = Object.keys(SCHEMAS).filter((f) => fs.existsSync(path.join(ROOT, dir, f)));
     if (!manifests.length) r.errors.push(`${dir}: chybí workmux-plugin.json i workmux-tool.json`);
@@ -202,10 +202,10 @@ async function cmdValidate(dirs) {
           validate = ajv.compile(await loadSchema(url));
         } catch (e) {
           validate = null;
-          r.skipped.push(`${rel}: schéma ${url} nejde načíst (${e.message}) — validace přeskočena`);
+          r.errors.push(`${rel}: schéma ${url} nejde načíst (${e.message}) — manifest nejde ověřit`);
         }
         schemaCache.set(url, validate);
-      } else if (validate === null) r.skipped.push(`${rel}: schéma ${url} nejde načíst — validace přeskočena`);
+      } else if (validate === null) r.errors.push(`${rel}: schéma ${url} nejde načíst — manifest nejde ověřit`);
       if (validate && !validate(data)) {
         for (const err of validate.errors) r.errors.push(`${rel}: ${err.instancePath || "/"} ${err.message}${err.params?.additionalProperty ? ` (${err.params.additionalProperty})` : ""}`);
       }
@@ -215,14 +215,10 @@ async function cmdValidate(dirs) {
       r.errors.push(...c.errors);
       r.warnings.push(...c.warnings);
     }
-    // Schéma `workmux-tool.json` je ověřené na produkci — když nejde načíst, je to červená
-    // (nejde nic tvrdit). U `workmux-plugin.json` jen poznámka, schéma může zatím vracet 404.
-    if (manifests[0] === "workmux-tool.json" && r.skipped.some((s) => s.includes("workmux-tool.json"))) r.errors.push(`${dir}: manifest nejde ověřit proti schématu (síť?)`);
     if (r.errors.length) ok = false;
     out(`${r.errors.length ? "FAIL" : "ok  "} ${dir}`);
     for (const e of r.errors) out(`  error: ${e}`);
     for (const w of r.warnings) out(`  warn:  ${w}`);
-    for (const s of r.skipped) out(`  skip:  ${s}`);
   }
   finish({ cmd: "validate", ok, results }, ok ? 0 : 1);
 }

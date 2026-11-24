@@ -1,5 +1,5 @@
 {
-  "name": "workmux-tool-solidcraft",
+  "name": "workmux-plugin-solidcraft",
   "version": "0.1.0",
   "private": true,
   "description": "WorkMux plugin: SolidCraft headless CAD behind a streamable HTTP MCP endpoint",

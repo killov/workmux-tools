@@ -100,7 +100,7 @@ const SOURCE_TEXT = {
 };
 
 const NO_AUTH_TEXT = [
-  "No Google credentials are configured for this tool, so gws cannot call Google APIs.",
+  "No Google credentials are configured for this plugin, so gws cannot call Google APIs.",
   "Ask the project owner to set one of these in WorkMux (Project settings → Plugins → Google Workspace):",
   `- an OAuth connection whose access token WorkMux passes in the ${TOKEN_HEADER} header (preferred; acts as the connected Google user),`,
   "- the env/secret GOOGLE_WORKSPACE_CLI_TOKEN with an OAuth2 access token (expires after about an hour),",
