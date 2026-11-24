@@ -1,0 +1,14 @@
+{
+  "app": "anicraft",
+  "name": "AniCraft",
+  "repo": "storytold/anicraft",
+  "version": "0.2.1",
+  "sha256": {
+    "x86_64": "8e0321581daa591fd812b6cecccaf06a56688b2c5a6c624cbd3fee6553f403a4",
+    "aarch64": "e6f434250596bc1677617c895d2f4719e9bccc7fd60b371b442dd48ad435d5ca"
+  },
+  "aptPackages": ["ffmpeg"],
+  "hideTools": [],
+  "callTimeoutMs": 600000,
+  "engineRoots": false
+}

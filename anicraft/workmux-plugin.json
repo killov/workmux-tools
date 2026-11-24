@@ -1,0 +1,42 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "anicraft",
+  "name": "AniCraft",
+  "description": "Headless 2D vector animation in the style of Flash/Animate (AniCraft from ArtCraft, open source, written in Rust). Draws shapes and paths, builds symbols, keyframes, motion and shape tweens on a timeline with layers and scenes, imports SVG, images and sound, runs any of its engine commands, renders PNG frames and exports animated GIF, MP4, WebM, Lottie JSON, SVG and PNG frames, sprite sheets and HTML.",
+  "instructions": "AniCraft runs headless in your own container; every file lives in /work.\n\n1. Inputs (optional): upload them to /work first. An AniCraft project: anicraft_run {\"command\":\"file.open\",\"params\":{\"path\":\"/work/x.anicraft\",\"confirm\":true}}; SVG, PNG, JPEG or sound (WAV, OGG, MP3) into the open document: anicraft_run {\"command\":\"file.import\",\"params\":{\"path\":\"/work/logo.svg\"}} (SVG goes through file.import, not file.open).\n2. New document: anicraft_run {\"command\":\"file.new\",\"params\":{\"width\":400,\"height\":400,\"fps\":24}} (add \"confirm\":true over unsaved work).\n3. Find commands with anicraft_commands and always a filter ({\"filter\":\"tween\"}, \"draw\", \"timeline\", \"motion\", \"symbol\", \"layer\", \"scene\", \"export\"…), never unfiltered; run them with anicraft_run {\"command\":...,\"params\":{...}} or several at once with anicraft_run_script {\"steps\":[{\"command\":...,\"params\":{...}},...]}. Frames in params are 0-based. anicraft_document shows the document, layers and frames. Example of a ball bouncing for 3 s at 24 fps: draw.ellipse {\"x\":170,\"y\":20,\"w\":60,\"h\":60,\"fill\":\"#e53935\"}, timeline.insert_frame {\"frame\":71}, timeline.create_motion_tween {\"frame\":0}, then motion.set_key {\"property\":\"y\",\"value\":20,\"frame\":0}, {\"property\":\"y\",\"value\":320,\"frame\":18}, {\"property\":\"y\",\"value\":60,\"frame\":36}… for the bounces.\n4. Check the result: anicraft_render {\"frame\":18} saves a PNG of that frame into /work and returns its path (no inline image). Download it to look at it or to show it.\n5. Export with an absolute path in /work and a new file name for every export (the engine refuses to overwrite a file): file.export_gif {\"path\":\"/work/ball.gif\"} (animated GIF), file.export_video {\"path\":\"/work/ball.mp4\"} (.mp4 or .webm), file.export_lottie {\"path\":\"/work/ball.json\"} (Lottie JSON), file.export_svg {\"path\":\"/work/frame.svg\",\"frame\":0} (one frame), file.export_png, file.export_png_sequence {\"dir\":\"/work/seq\"}, file.export_sprite_sheet, file.export_html; list their options with anicraft_commands {\"filter\":\"export\"}.\n6. To continue later: file.save_as {\"path\":\"/work/<name>.anicraft\"} and file.open it in a later session.\n7. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work. A new MCP session (e.g. after a reconnect) starts with an empty document, so save .anicraft files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "svg", "description": "Vector artwork to import as shapes" },
+      { "type": "png", "description": "Image to import" },
+      { "type": "jpg", "description": "Image or background to import" },
+      { "type": "wav", "description": "Sound to import" },
+      { "type": "ogg", "description": "Sound to import" },
+      { "type": "mp3", "description": "Sound to import" },
+      { "type": "anicraft", "description": "AniCraft project saved earlier" }
+    ],
+    "returns": [
+      { "type": "gif", "description": "Animated GIF" },
+      { "type": "mp4", "description": "Animation as MP4 video" },
+      { "type": "webm", "description": "Animation as WebM video" },
+      { "type": "json", "description": "Animation as Lottie JSON" },
+      { "type": "svg", "description": "One frame as SVG" },
+      { "type": "png", "description": "anicraft_render frame, exported frame, PNG sequence frame or sprite sheet" },
+      { "type": "html", "description": "Animation as a standalone HTML page" },
+      { "type": "anicraft", "description": "AniCraft project to continue later" }
+    ]
+  }
+}
