@@ -1,0 +1,9 @@
+{
+  "name": "workmux-tools-claude-scripts",
+  "private": true,
+  "description": "Helpers of the /resolve workflow (GATE: manifest validation, MCP smoke test).",
+  "type": "module",
+  "dependencies": {
+    "ajv": "^8.17.1"
+  }
+}
