@@ -51,8 +51,9 @@ Typical session ("crop to 16:9, sharpen, add contrast, return a PNG"):
 - **tools/list, tools/call and resources are forwarded** to PhotoCraft (its own tool list and server instructions,
   with a WorkMux note on top). The bridge-only tools (`ui_*`, `control_call`) need the desktop app and are not listed.
 - **Paths stay in `/work`.** Top-level `path`/`dir`-like arguments of every tool are resolved against `/work` and
-  refused outside it (symlinks included); absolute file paths inside `command_run` params and `command_batch` steps
-  are checked too. PhotoCraft's own automation roots (`/work` only) stay on as a second fence.
+  refused outside it (symlinks included); file paths inside `command_run` params and `command_batch` steps (also
+  relative ones) and any other value that looks like a path (absolute, or going up with `..`) are checked too. PhotoCraft's
+  own automation roots (`/work` only) stay on as a second fence.
 - **No inline files.** The PNG of `render_preview` is saved into `/work` and replaced by its path.
 - **Timeouts.** Each call is limited to `CRAFT_CALL_TIMEOUT_MS` (default from `craft.json`, 300 s); startup to
   `CRAFT_START_TIMEOUT_MS` (default 30 s).
@@ -80,8 +81,8 @@ and both checksums in `craft.json` from the release's `SHA256SUMS.txt` (no `-rc`
 | `CRAFT_CLI` | `photocraft-cli` | the PhotoCraft CLI |
 | `CRAFT_CALL_TIMEOUT_MS` | `300000` | per tool call |
 | `CRAFT_START_TIMEOUT_MS` | `30000` | start of a PhotoCraft process |
-| `SESSION_IDLE_MINUTES` | `60` | close an MCP session after this much inactivity |
-| `MAX_SESSIONS` | `4` | PhotoCraft processes at once; the least recently used is closed beyond it |
+| `SESSION_IDLE_MINUTES` | `30` | close an MCP session after this much inactivity (the manifest's `idleMinutes`) |
+| `MAX_SESSIONS` | `4` | PhotoCraft processes at once; the least recently used is closed beyond it (logged; its client gets a 404 that says so) |
 | `PHOTOCRAFT_*` | — | passed to `photocraft-cli` (e.g. `PHOTOCRAFT_GPU`) |
 
 ## Run locally

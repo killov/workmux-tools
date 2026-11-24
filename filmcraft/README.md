@@ -55,8 +55,9 @@ is written as `<name>.webm.mp4`.
 - **Paths stay in `/work`.** FilmCraft has no automation roots of its own (`"engineRoots": false` in `craft.json`),
   so the bridge is the only fence: top-level `path`-like arguments are resolved against `/work`, file keys inside
   `command_run` params and `command_batch` steps (`path`, `dir`, `destination`, …) are refused outside `/work` also
-  when relative, and lists of files (`media_import.paths`, `file.import.paths`, …) become absolute paths in `/work`;
-  symlinks out of `/work` are refused too.
+  when relative, any other value that looks like a path (absolute, or going up with `..`) is checked as well, and
+  lists of files (`media_import.paths`, `file.import.paths`, …) become absolute paths in `/work`; symlinks out of
+  `/work` are refused too.
 - **No inline files.** The PNG of `render_preview` and `render_frame` is saved into `/work` and replaced by its path;
   so is the `pngBase64` of `graphics.template.thumbnail` without a `path`.
 - **Timeouts.** Each call is limited to `CRAFT_CALL_TIMEOUT_MS` (default from `craft.json`, 900 s, for long
@@ -83,8 +84,8 @@ checksums in `craft.json` from the release's `SHA256SUMS.txt` (no `-rc` releases
 | `CRAFT_CLI` | `filmcraft-cli` | the FilmCraft CLI |
 | `CRAFT_CALL_TIMEOUT_MS` | `900000` | per tool call |
 | `CRAFT_START_TIMEOUT_MS` | `30000` | start of a FilmCraft process |
-| `SESSION_IDLE_MINUTES` | `60` | close an MCP session after this much inactivity |
-| `MAX_SESSIONS` | `4` | FilmCraft processes at once; the least recently used is closed beyond it |
+| `SESSION_IDLE_MINUTES` | `30` | close an MCP session after this much inactivity (the manifest's `idleMinutes`) |
+| `MAX_SESSIONS` | `4` | FilmCraft processes at once; the least recently used is closed beyond it (logged; its client gets a 404 that says so) |
 | `FILMCRAFT_*` | — | passed to `filmcraft-cli` |
 
 ## Run locally

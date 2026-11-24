@@ -62,11 +62,36 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 
+## Paths
+
+The bridge checks every tool argument before the child sees it; a value outside `/work` (also through a symlink)
+fails the call with an error that names the argument:
+
+- top-level file keys (`path`, `file`, `dir`, `out`, …) are resolved against `/work` and passed on as absolute paths,
+- the same keys inside `command_run` params and `command_batch` steps are checked also when relative but passed on
+  unchanged (a relative `path` there can be an object id, e.g. VectorCraft's `path-3`, which resolves inside),
+- any other string, under any key and at any depth, is checked when it looks like a path: absolute, `..`, or
+  containing a `../` step. A text that starts with `/` is refused as well; that is the price of the general rule.
+
 With `"engineRoots": false` the child runs as plain `<app>-cli mcp` in `/work` and the bridge is the only fence
 around `/work`: file keys inside `command_run` params and `command_batch` steps are checked also when relative,
 `destination`, `template`, the scratch disk keys and `from`/`to` count as file keys there, and string lists under
 `paths`/`files` (top level and nested) are refused outside `/work` and rewritten to absolute paths. Strings in a list
 under a file key (also nested lists, e.g. `listing: [[path, size]]`) are checked like the key's own value.
+
+## Inline exports
+
+An export without a destination answers JSON with the file in `dataBase64` (or `pngBase64`). The bridge writes it into
+`/work` with the extension of its `format` and answers the `path` instead. A `format` outside the known export formats
+(`EXT_BY_FORMAT` in `server.mjs`) or an answer that does not parse is dropped and the call fails: file bytes never
+reach the bot inline.
+
+## Sessions
+
+Each MCP session has its own `<app>-cli` child. A session closes after `SESSION_IDLE_MINUTES` (default 30, the
+manifests' `idleMinutes`); a failed `initialize` leaves no child behind. Beyond `MAX_SESSIONS` (default 4) the least
+recently used session is closed with its unsaved document; that is logged, and its client gets HTTP 404 with a
+message telling it to initialize again and reopen its last saved file.
 
 ## New Craft plugin
 
@@ -90,3 +115,10 @@ under a file key (also nested lists, e.g. `listing: [[path, size]]`) are checked
 Edit the files in `craft-common/`, run `node craft-common/sync.mjs` and commit `craft-common/` together with the
 regenerated files of every Craft plugin. Never edit a generated file in a plugin folder: the gate refuses it. A
 version bump of one plugin is a change of its `craft.json` followed by the same sync.
+
+The bridge tests run `server.mjs` against a fake CLI (`test/fake-cli.mjs`; `test/` is not copied into the plugins):
+
+```bash
+npm ci --prefix craft-common
+node --test craft-common/test/bridge.test.mjs
+```

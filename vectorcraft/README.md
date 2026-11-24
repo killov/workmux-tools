@@ -57,10 +57,12 @@ Typical session ("draw a simple coffee shop logo, return SVG and PNG"):
   with a WorkMux note on top). The tools that need the desktop app (`ui_*`, `inspect_ui`, `type_text`,
   `answer_dialog`, `open_panel`, `invoke_menu`) are not listed.
 - **Paths stay in `/work`.** Top-level `path`-like arguments of every tool are resolved against `/work` and refused
-  outside it (symlinks included); absolute file paths inside `command_run` params and `command_batch` steps are
-  checked too. VectorCraft's own automation roots (`/work` only) stay on as a second fence.
+  outside it (symlinks included); file paths inside `command_run` params and `command_batch` steps (also relative
+  ones) and any other value that looks like a path (absolute, or going up with `..`) are checked too. VectorCraft's
+  own automation roots (`/work` only) stay on as a second fence.
 - **No inline files.** The PNG of `render_preview` and `screenshot` is saved into `/work` and replaced by its path;
-  an export without a destination (`dataBase64` in the answer) is written into `/work` and answered with its `path`.
+  an export without a destination (`dataBase64` in the answer) is written into `/work` and answered with its `path`
+  (a format outside the known export formats is refused).
 - **Timeouts.** Each call is limited to `CRAFT_CALL_TIMEOUT_MS` (default from `craft.json`, 300 s); startup to
   `CRAFT_START_TIMEOUT_MS` (default 30 s).
 - `GET /healthz` returns 200; SIGTERM closes all sessions and exits within a few seconds.
@@ -85,8 +87,8 @@ and both checksums in `craft.json` from the release's `SHA256SUMS.txt` (no `-rc`
 | `CRAFT_CLI` | `vectorcraft-cli` | the VectorCraft CLI |
 | `CRAFT_CALL_TIMEOUT_MS` | `300000` | per tool call |
 | `CRAFT_START_TIMEOUT_MS` | `30000` | start of a VectorCraft process |
-| `SESSION_IDLE_MINUTES` | `60` | close an MCP session after this much inactivity |
-| `MAX_SESSIONS` | `4` | VectorCraft processes at once; the least recently used is closed beyond it |
+| `SESSION_IDLE_MINUTES` | `30` | close an MCP session after this much inactivity (the manifest's `idleMinutes`) |
+| `MAX_SESSIONS` | `4` | VectorCraft processes at once; the least recently used is closed beyond it (logged; its client gets a 404 that says so) |
 | `VECTORCRAFT_*` | — | passed to `vectorcraft-cli` |
 
 ## Run locally

@@ -46,7 +46,8 @@ const PORT = Number(env.PORT || 8080);
 const MCP_PATH = env.MCP_PATH || "/mcp";
 const CALL_TIMEOUT_MS = Number(env.CRAFT_CALL_TIMEOUT_MS || CRAFT.callTimeoutMs);
 const START_TIMEOUT_MS = Number(env.CRAFT_START_TIMEOUT_MS || 30_000);
-const SESSION_IDLE_MS = Number(env.SESSION_IDLE_MINUTES || 60) * 60_000;
+// The same as idleMinutes in the manifests: a session outliving its container's idle time only holds memory.
+const SESSION_IDLE_MS = Number(env.SESSION_IDLE_MINUTES || 30) * 60_000;
 const MAX_SESSIONS = Number(env.MAX_SESSIONS || 4);
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
 // WorkMux shows tools as <slug>__<tool>, at most 64 characters.
@@ -58,15 +59,15 @@ const HIDDEN_TOOLS = CRAFT.hideTools.map((re) => new RegExp(re));
 const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
 
 // Argument keys that name a file or directory (doc_open.path, doc_export.path, doc_export_layers.dir, …; the
-// tool names differ between the Craft apps). Top-level values are resolved against WORK_DIR. Inside nested
-// objects (command_run params, command_batch steps) only absolute paths are checked: a relative value can be
-// something else there, e.g. a vector path name, and the child resolves relative files beneath its roots anyway.
+// tool names differ between the Craft apps). Top-level values become absolute paths in WORK_DIR. Inside nested
+// objects (command_run params, command_batch steps) they are checked against WORK_DIR as well but passed on as
+// they are: a relative value can be something else there, e.g. a VectorCraft path object id. Any other string,
+// under any key and at any depth, is checked too when it looks like a path (absolute or going up with ..).
 const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "output", "dir", "directory", "folder"]);
 // An engine without --automation-read-root/--automation-write-root (FilmCraft) reads and writes wherever it is
-// told, so this server is the only fence: nested relative values are checked as well (they resolve against the
-// child's cwd, WORK_DIR), a few more keys name files in its commands (file.projectManager.destination, the scratch
-// disks, template paths, media.autoRelink from/to), and lists of files (media_import.paths, file.import.paths)
-// become absolute paths in WORK_DIR, as the engine wants them.
+// told, so this server is the only fence: a few more keys name files in its commands
+// (file.projectManager.destination, the scratch disks, template paths, media.autoRelink from/to), and lists of files
+// (media_import.paths, file.import.paths) become absolute paths in WORK_DIR, as the engine wants them.
 const ENGINE_ROOTS = CRAFT.engineRoots ?? true;
 // `fileKeys` in craft.json names further file keys of one app's commands (LightCraft folder.move.into, …).
 const NESTED_FILE_KEYS = new Set([
@@ -77,6 +78,12 @@ const NESTED_FILE_KEYS = new Set([
 const FILE_LIST_KEYS = new Set(["paths", "files"]);
 // JSON keys of file bytes in the child's answers.
 const BASE64_KEYS = new Set(["dataBase64", "pngBase64"]);
+// File extension of an inline export by its `format` (the export formats of the Craft apps); others are refused.
+const EXT_BY_FORMAT = new Map(Object.entries({
+  png: "png", png8: "png", jpg: "jpg", jpeg: "jpg", webp: "webp", gif: "gif", bmp: "bmp", tga: "tga", exr: "exr",
+  tif: "tif", tiff: "tif", psd: "psd", psb: "psb", ora: "ora", svg: "svg", svgz: "svgz", pdf: "pdf", eps: "eps",
+  ai: "ai", dxf: "dxf",
+}));
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
 
@@ -99,7 +106,11 @@ class PathError extends Error {}
 
 function isInside(dir, p) {
   const rel = path.relative(dir, p);
-  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+  return rel === "" || (rel !== ".." && !rel.startsWith("../") && !path.isAbsolute(rel));
+}
+
+function looksLikePath(s) {
+  return path.isAbsolute(s) || s === ".." || s.startsWith("../") || s.includes("/../") || s.endsWith("/..");
 }
 
 // Resolve a user path against WORK_DIR and make sure it (and any symlink on the way) stays inside.
@@ -121,10 +132,11 @@ function resolveInWork(value, what) {
   return abs;
 }
 
-// Check a nested argument value under `key` (null for list items) and return it with lists of files rewritten.
+// Check an argument value under `key` (null for list items) and return it with lists of files rewritten.
 function prepareNested(key, value, where) {
   if (typeof value === "string") {
-    if (NESTED_FILE_KEYS.has(key) && (!ENGINE_ROOTS || path.isAbsolute(value))) resolveInWork(value, where);
+    if (NESTED_FILE_KEYS.has(key) && value.trim() !== "") resolveInWork(value, where);
+    else if (looksLikePath(value)) resolveInWork(value, `${where} (looks like a path)`);
     return value;
   }
   if (Array.isArray(value)) {
@@ -147,7 +159,7 @@ function extFor(mime) {
   return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif", "audio/wav": "wav", "audio/mpeg": "mp3" }[mime] || "bin";
 }
 
-// Rewrite tool arguments: top-level file arguments become absolute paths in WORK_DIR, nested ones are checked.
+// Rewrite tool arguments: top-level file arguments become absolute paths in WORK_DIR, everything else is checked.
 function prepareArgs(tool, args) {
   const out = {};
   for (const [key, value] of Object.entries(args || {})) {
@@ -161,6 +173,7 @@ function prepareArgs(tool, args) {
 function externalizeContent(tool, result) {
   if (!result || !Array.isArray(result.content)) return result;
   const content = [];
+  let failed = false;
   for (const block of result.content) {
     if ((block.type === "image" || block.type === "audio") && typeof block.data === "string") {
       const file = path.join(WORK_DIR, `${tool}-${stamp()}.${extFor(block.mimeType)}`);
@@ -171,32 +184,41 @@ function externalizeContent(tool, result) {
       fs.writeFileSync(file, Buffer.from(block.resource.blob, "base64"));
       content.push({ type: "text", text: `Resource ${block.resource.uri} (${block.resource.mimeType || "binary"}) saved to ${file}.` });
     } else if (block.type === "text" && typeof block.text === "string" && [...BASE64_KEYS].some((k) => block.text.includes(`"${k}"`))) {
-      content.push({ ...block, text: externalizeJsonData(tool, block.text) });
+      const { text, error } = externalizeJsonData(tool, block.text);
+      content.push({ ...block, text });
+      failed ||= error;
     } else {
       content.push(block);
     }
   }
-  return { ...result, content };
+  return failed ? { ...result, content, isError: true } : { ...result, content };
 }
 
 // An export without a destination (VectorCraft's export, document.export in command_run/command_batch) answers
 // JSON with the file as {"format": ..., "dataBase64": ...}, FilmCraft's graphics.template.thumbnail without a path
-// as {"pngBase64": ...}; every such object gets a file in WORK_DIR and its `path` instead.
+// as {"pngBase64": ...}; every such object gets a file in WORK_DIR and its `path` instead. The bytes never pass
+// inline: an answer that does not parse or an unknown format is dropped and reported as an error.
 function externalizeJsonData(tool, text) {
   let value;
   try {
     value = JSON.parse(text);
   } catch {
-    return text;
+    return { text: `${tool} answered with inline file data that could not be parsed; it was dropped. Export with a path inside ${WORK_DIR}.`, error: true };
   }
+  let error = false;
   const walk = (node) => {
     if (Array.isArray(node)) return node.map(walk);
     if (!node || typeof node !== "object") return node;
     const out = {};
     for (const [key, v] of Object.entries(node)) {
       if (BASE64_KEYS.has(key) && typeof v === "string") {
-        const format = key === "pngBase64" ? "png" : typeof node.format === "string" && /^[a-z0-9]+$/.test(node.format) ? node.format : "bin";
-        const ext = format === "png8" ? "png" : format;
+        const format = key === "pngBase64" ? "png" : node.format;
+        const ext = typeof format === "string" && EXT_BY_FORMAT.get(format.toLowerCase());
+        if (!ext) {
+          out.error = `unsupported export format ${JSON.stringify(format)}; export with a path inside ${WORK_DIR}`;
+          error = true;
+          continue;
+        }
         out.path = path.join(WORK_DIR, `${tool}-${stamp()}.${ext}`);
         fs.writeFileSync(out.path, Buffer.from(v, "base64"));
       } else {
@@ -205,7 +227,7 @@ function externalizeJsonData(tool, text) {
     }
     return out;
   };
-  return JSON.stringify(walk(value), null, 2);
+  return { text: JSON.stringify(walk(value), null, 2), error };
 }
 
 // Adjust the child's tool list for WorkMux: no bridge-only tools, valid names only, path semantics in descriptions.
@@ -234,6 +256,9 @@ function adaptTools(tools) {
 // Sessions: one <app>-cli child per MCP session
 
 const sessions = new Map(); // id -> session
+// Ids of sessions dropped for MAX_SESSIONS (the newest EVICTED_MAX), so their client learns why they are gone.
+const evicted = new Set();
+const EVICTED_MAX = 64;
 let shuttingDown = false;
 
 async function startBackend() {
@@ -355,7 +380,13 @@ async function newSession(req, res, body) {
   if (sessions.size >= MAX_SESSIONS) {
     // Drop the least recently used session to make room.
     const [oldest] = [...sessions.entries()].sort((a, b) => a[1].lastSeen - b[1].lastSeen);
-    if (oldest) await closeSession(oldest[0], "too many sessions");
+    if (oldest) {
+      const [id, old] = oldest;
+      evicted.add(id);
+      if (evicted.size > EVICTED_MAX) evicted.delete(evicted.values().next().value);
+      const idle = Math.round((Date.now() - old.lastSeen) / 1000);
+      await closeSession(id, `MAX_SESSIONS ${MAX_SESSIONS} reached, least recently used, idle ${idle} s; unsaved document changes of this session are lost`);
+    }
   }
   const sess = { lastSeen: Date.now(), tools: null, closing: false };
   try {
@@ -364,24 +395,25 @@ async function newSession(req, res, body) {
     log(`cannot start ${CRAFT_CLI}:`, err.message);
     return sendJson(res, 500, { jsonrpc: "2.0", error: { code: -32603, message: `Cannot start ${APP_NAME}: ${err.message}` }, id: body?.id ?? null });
   }
-  sess.httpTransport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-    onsessioninitialized: (id) => {
-      sess.id = id;
-      sessions.set(id, sess);
-      log(`session ${id} started (${SLUG} pid ${sess.backend.transport.pid})`);
-    },
-  });
-  sess.httpTransport.onclose = () => sess.id && closeSession(sess.id, "transport closed");
-  sess.backend.client.onclose = () => {
-    if (sess.id) closeSession(sess.id, `${CRAFT_CLI} exited`);
-  };
-  sess.server = createProxyServer(sess);
-  await sess.server.connect(sess.httpTransport);
-  await sess.httpTransport.handleRequest(req, res, body);
-  if (!sess.id) {
-    // Initialization failed; do not leak the child.
-    await sess.backend.client.close().catch(() => {});
+  try {
+    sess.httpTransport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (id) => {
+        sess.id = id;
+        sessions.set(id, sess);
+        log(`session ${id} started (${SLUG} pid ${sess.backend.transport.pid})`);
+      },
+    });
+    sess.httpTransport.onclose = () => sess.id && closeSession(sess.id, "transport closed");
+    sess.backend.client.onclose = () => {
+      if (sess.id) closeSession(sess.id, `${CRAFT_CLI} exited`);
+    };
+    sess.server = createProxyServer(sess);
+    await sess.server.connect(sess.httpTransport);
+    await sess.httpTransport.handleRequest(req, res, body);
+  } finally {
+    // Initialization failed (or threw): do not leak the child, the transport or the server.
+    if (!sess.id) await Promise.allSettled([sess.httpTransport?.close(), sess.server?.close(), sess.backend.client.close()]);
   }
 }
 
@@ -429,9 +461,15 @@ const httpServer = createServer(async (req, res) => {
     const body = req.method === "POST" ? await readBody(req) : undefined;
     const sid = req.headers["mcp-session-id"];
     if (sid) {
-      const sess = sessions.get(Array.isArray(sid) ? sid[0] : sid);
+      const id = Array.isArray(sid) ? sid[0] : sid;
+      const sess = sessions.get(id);
       // Unknown session: 404 tells the client to initialize again.
-      if (!sess) return sendJson(res, 404, { jsonrpc: "2.0", error: { code: -32001, message: "Session not found" }, id: null });
+      if (!sess) {
+        const message = evicted.has(id)
+          ? `Session closed: the server reached MAX_SESSIONS (${MAX_SESSIONS}) parallel sessions and closed the least recently used one; unsaved changes are lost. Initialize again and reopen your last saved file from /work.`
+          : "Session not found";
+        return sendJson(res, 404, { jsonrpc: "2.0", error: { code: -32001, message }, id: null });
+      }
       sess.lastSeen = Date.now();
       return await sess.httpTransport.handleRequest(req, res, body);
     }

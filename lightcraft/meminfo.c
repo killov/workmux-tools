@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 // cgroup v2, then v1. "max" (v2) does not parse and v1's "unlimited" exceeds MemTotal: both leave it as is.
@@ -54,10 +55,15 @@ static int capped_meminfo(int flags) {
   return fd;
 }
 
+static int (*real_open64)(const char *, int, ...);
+
+// Looked up once before any thread runs: a lazy lookup inside open64 would race between threads.
+__attribute__((constructor)) static void init_real_open64(void) {
+  real_open64 = (int (*)(const char *, int, ...))dlsym(RTLD_NEXT, "open64");
+}
+
 // Rust's std::fs (the engines and sysinfo) opens files through open64; glibc's own fopen above does not.
 int open64(const char *path, int flags, ...) {
-  static int (*real_open64)(const char *, int, ...);
-  if (!real_open64) real_open64 = (int (*)(const char *, int, ...))dlsym(RTLD_NEXT, "open64");
   mode_t mode = 0;
   if ((flags & O_CREAT) || (flags & O_TMPFILE) == O_TMPFILE) {
     va_list ap;
@@ -69,5 +75,7 @@ int open64(const char *path, int flags, ...) {
     int fd = capped_meminfo(flags);
     if (fd >= 0) return fd;
   }
+  // Called before the constructor (by another preloaded library's init): the plain syscall.
+  if (!real_open64) return (int)syscall(SYS_openat, AT_FDCWD, path, flags, mode);
   return real_open64(path, flags, mode);
 }
