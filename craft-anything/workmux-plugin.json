@@ -1,0 +1,52 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "craft-anything",
+  "name": "Craft Anything",
+  "description": "Headless reverse-engineering workbench (Craft Anything from ArtCraft, early alpha): studies how a program, app or file works (ELF/PE/Mach-O, .NET, Java/JAR, Android APK, iOS IPA, Electron/JS bundles, WebAssembly, firmware, databases, game files) — triage, functions, strings, pseudo-C, classes and resources — and writes an evidence-backed report as Markdown or HTML. Rebuilding a program and website capture are not available.",
+  "instructions": "Craft Anything runs headless in your own container; every file lives in /work. It explains how software works and backs every claim with an evidence id.\n\n1. Upload the file to study to /work (a program, library, .apk/.aab, .ipa, .jar/.class/.dex, .NET .exe/.dll, app.asar or .js bundle, .wasm, firmware image, .sqlite database, .pcap capture, game archive…).\n2. Open it: core_target_open {\"path\":\"/work/sample.exe\"}. The answer names its kind (elf, pe, apk, …) and sha256. Pass absolute /work/... paths to every tool; paths outside /work are refused.\n3. Get the picture: core_target_triage {} (format, architecture, toolchain, packer hints) and core_overview_show {\"detail\":\"summary\"}. Note the evidence ids (ev_...) they return.\n4. Dig in with the tools for its kind, summaries first: native_functions_search {\"pattern\":\"main\"}, native_strings_find {\"pattern\":\"http\"}, native_function_pseudocode {\"function\":\"0x401000\"}, native_function_study, native_xrefs_list for programs; android_package_show, android_classes_find for APKs; java_archive_show, java_class_show for JARs; managed_assembly_show, managed_members_list for .NET; apple_macho_show, apple_plist_show for iOS/macOS; js_app_map {\"input_path\":\"/work/app.asar\"} for Electron and web bundles; formats_*, firmware_*, db_sqlite_show, packets_*, game_* for the rest. Large results are paged: core_evidence_browse with the evidence id.\n5. Record what you learned: core_brief_write {\"question\":\"...\"} with the user's question, core_finding_record {\"statement\":\"...\",\"evidence_ids\":[\"ev_...\"],\"confidence\":\"observed\"} for each answer, core_unknown_add for open questions.\n6. Write the report: core_report_write {\"path\":\"/work/report.md\"} (Markdown) or {\"path\":\"/work/report.html\",\"format\":\"html\"} (a self-contained page). Always pass a path. core_evidence_export {\"path\":\"/work/evidence.json\"} writes the evidence as a JSON bundle; native_source_folder_write {\"folder\":\"/work/pseudo-c\"} writes the functions as pseudo-C files.\n7. Hand the result over: download the report (and other files) from /work with plugin_download_file.\n\nA new MCP session (e.g. after a reconnect) starts with no open target: open the file again. Deep mode is on (the tools read the target's code and files), so use the plugin only for files the user may analyse. Tools that run the target or change a device, rebuilding a program with a coding agent, website capture, the AI layer and external decompilers (Ghidra, ILSpy, Vineflower, rizin, gdb) are not available. The engine's own note about list_toolsets/enable_toolset and command_list does not apply: every available tool is already listed. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "exe", "description": "Windows program (PE) or .NET assembly to study" },
+      { "type": "dll", "description": "Windows library (PE) or .NET assembly to study" },
+      { "type": "so", "description": "Linux or Android shared library (ELF) to study" },
+      { "type": "elf", "description": "Linux program (ELF) to study" },
+      { "type": "bin", "description": "Program without an extension or firmware image to study" },
+      { "type": "dylib", "description": "macOS/iOS library (Mach-O) to study" },
+      { "type": "apk", "description": "Android app to study" },
+      { "type": "aab", "description": "Android App Bundle to study" },
+      { "type": "ipa", "description": "iOS app to study" },
+      { "type": "jar", "description": "Java archive to study" },
+      { "type": "class", "description": "Java class file to study" },
+      { "type": "dex", "description": "Android Dalvik bytecode to study" },
+      { "type": "zip", "description": "Archive of an app or a folder to study" },
+      { "type": "asar", "description": "Electron app archive (app.asar) to study" },
+      { "type": "js", "description": "JavaScript bundle to study" },
+      { "type": "wasm", "description": "WebAssembly module to study" },
+      { "type": "sqlite", "description": "SQLite database to study" },
+      { "type": "db", "description": "SQLite database to study" },
+      { "type": "pcap", "description": "Network capture to study" },
+      { "type": "pcapng", "description": "Network capture to study" }
+    ],
+    "returns": [
+      { "type": "md", "description": "Investigation report with findings and the evidence ledger (core_report_write)" },
+      { "type": "html", "description": "Investigation report as a self-contained HTML page (core_report_write format html)" },
+      { "type": "json", "description": "Evidence bundle (core_evidence_export)" },
+      { "type": "c", "description": "Pseudo-C of the target's functions (native_source_folder_write)" },
+      { "type": "png", "description": "Texture taken out of a Unity or Unreal game file" }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "app": "craft-anything",
+  "name": "Craft Anything",
+  "repo": "storytold/craft-anything",
+  "version": "0.6.1",
+  "sha256": {
+    "x86_64": "b9a4795a7c294bd266ad7e53d53d6f6761ac3d0207ee82d37b3c578463be8e4b",
+    "aarch64": "b5f926e2a85824f9d5646c03ccfcbe4666ac9b55c4093065393b3e2cd4566ae0"
+  },
+  "aptPackages": [],
+  "hideTools": [
+    "^project_", "^rebuild_", "^build_", "^engines_", "^settings_", "^plugins_", "^setup_", "^ai_", "^assets_",
+    "^frida_", "^runtime_", "^web_", "^core_person_ask$", "^core_action_approve$", "^core_archive_extract$",
+    "^native_objdump_run$", "^native_rizin_", "^native_gdb_", "^managed_ilspy_decompile$", "^java_vineflower_decompile$",
+    "^radio_"
+  ],
+  "nonFileArgs": {
+    "game_unity_list": ["file"],
+    "game_unity_asset_export": ["file"],
+    "game_unreal_texture_export": ["file"],
+    "game_pak_extract": ["file"]
+  },
+  "callTimeoutMs": 600000,
+  "engineRoots": false,
+  "mcpArgs": ["--restricted", "--deep", "--all-tools"]
+}

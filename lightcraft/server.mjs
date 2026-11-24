@@ -2,9 +2,9 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
-// `relativePaths`, `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft
-// plugin. Every MCP session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP over
-// stdio in WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This
+// `mcpArgs`, `relativePaths`, `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every
+// Craft plugin. Every MCP session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP
+// over stdio in WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This
 // server forwards tools and resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux
 // plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it, and the child gets them
@@ -59,7 +59,8 @@ const TOOL_NAME_RE = /^[A-Za-z0-9_-]+$/;
 // Bridge-only tools (ui_*, control_call) only return an error in the headless engine, so they are not listed.
 const HIDDEN_TOOLS = CRAFT.hideTools.map((re) => new RegExp(re));
 // Variables of the application itself (e.g. PHOTOCRAFT_GPU) reach the child; nothing else from this env does.
-const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
+// A slug with a dash (craft-anything) names its variables with an underscore (CRAFT_ANYTHING_LOG).
+const APP_ENV_PREFIX = `${SLUG.toUpperCase().replace(/-/g, "_")}_`;
 
 // Argument keys that name a file or directory (doc_open.path, doc_export.path, doc_export_layers.dir, …; the
 // tool names differ between the Craft apps). Top-level values become absolute paths in WORK_DIR. Inside nested
@@ -77,6 +78,9 @@ const isNonFileArg = (tool, key) => NON_FILE_ARGS.get(tool)?.has(key) ?? false;
 // (file.projectManager.destination, the scratch disks, template paths, media.autoRelink from/to), and lists of files
 // (media_import.paths, file.import.paths) become absolute paths in WORK_DIR, as the engine wants them.
 const ENGINE_ROOTS = CRAFT.engineRoots ?? true;
+// `mcpArgs` in craft.json are further switches of `<app>-cli mcp` for an engine that hides tools behind them
+// (Craft Anything reads files only with --deep and lists every toolset only with --all-tools).
+const MCP_ARGS = CRAFT.mcpArgs ?? [];
 // `fileKeys` in craft.json names further file keys of one app's commands (LightCraft folder.move.into, …).
 const NESTED_FILE_KEYS = new Set([
   ...FILE_KEYS,
@@ -340,7 +344,7 @@ let shuttingDown = false;
 async function startBackend() {
   const transport = new StdioClientTransport({
     command: CRAFT_CLI,
-    args: ENGINE_ROOTS ? ["mcp", "--automation-read-root", WORK_DIR, "--automation-write-root", WORK_DIR] : ["mcp"],
+    args: ["mcp", ...MCP_ARGS, ...(ENGINE_ROOTS ? ["--automation-read-root", WORK_DIR, "--automation-write-root", WORK_DIR] : [])],
     cwd: WORK_DIR,
     env: { ...getDefaultEnvironment(), ...appEnv() },
     stderr: "pipe",

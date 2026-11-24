@@ -60,6 +60,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `hideTools` | regular expressions of tools not offered to bots (the bridge-only ones need the desktop app) |
 | `callTimeoutMs` | default limit of one tool call (`CRAFT_CALL_TIMEOUT_MS` overrides it) |
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
+| `mcpArgs` | optional; further switches after `mcp` for an engine that hides tools behind them (Craft Anything `--restricted`, `--deep`, `--all-tools`); switches only, no values and no `--automation-*` (sync.mjs refuses them) |
 | `relativePaths` | optional, default `false`; `true` for an engine that takes only forward-slash paths relative to its roots and refuses absolute ones (TextureCraft) — see below; cannot be combined with `encodeMp3` |
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 | `nonFileArgs` | optional; tool name → top-level argument keys of that tool that look like file keys but are not files (EffectCraft `set_property` `path` is a property path like `transform/opacity`: `{"set_property": ["path"]}`); they are passed on unchanged and checked like any other string (see below) |
@@ -125,7 +126,8 @@ message telling it to initialize again and reopen its last saved file.
    once, extract `./usr/bin/<app>-cli` (`dpkg-deb --fsys-tarfile <deb> | tar -x ./usr/bin/<app>-cli`), check
    `ldd` (libraries beyond libc go to `aptPackages`; never X11/Wayland — the headless engine renders on the CPU),
    and run `<app>-cli mcp --automation-read-root /tmp/w --automation-write-root /tmp/w` to see its tools (when it
-   answers "unknown mcp option", the engine has no roots: run `<app>-cli mcp` and set `"engineRoots": false`).
+   answers "unknown mcp option", the engine has no roots: run `<app>-cli mcp` and set `"engineRoots": false`;
+   when the engine hides tools behind flags, list them in `mcpArgs`).
 2. `mkdir <app>` and write `<app>/craft.json` (the checksums from `SHA256SUMS.txt`).
 3. `node craft-common/sync.mjs` — writes `server.mjs`, `meminfo.c`, `package.json`, `package-lock.json` and
    `Dockerfile` into `<app>/`.

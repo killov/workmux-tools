@@ -39,11 +39,11 @@ async function waitFor(check, what, ms = 5_000) {
 }
 
 // A bridge in its own temp dir (server.mjs reads craft.json next to itself) with fake-cli.mjs as the engine.
-async function startBridge({ engineRoots = true, relativePaths = false, encodeMp3 = false, env = {} } = {}) {
+async function startBridge({ engineRoots = true, relativePaths = false, encodeMp3 = false, mcpArgs, env = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, relativePaths, encodeMp3,base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, mcpArgs, relativePaths, encodeMp3,base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -347,6 +347,22 @@ describe("encode_mp3", () => {
     assert.match(r.text, /Unsupported data format/);
     assert.equal(fs.existsSync(path.join(bridge.work, "bad.mp3")), false);
   });
+});
+
+describe("mcpArgs", () => {
+  for (const engineRoots of [true, false]) {
+    test(`reach the child after mcp (engineRoots ${engineRoots})`, async () => {
+      const bridge = await startBridge({ engineRoots, mcpArgs: ["--restricted", "--deep"] });
+      try {
+        const sess = await openSession(bridge);
+        const argv = JSON.parse((await sess.call("argv", {})).text);
+        const roots = engineRoots ? ["--automation-read-root", bridge.work, "--automation-write-root", bridge.work] : [];
+        assert.deepEqual(argv, ["mcp", "--restricted", "--deep", ...roots]);
+      } finally {
+        await bridge.stop();
+      }
+    });
+  }
 });
 
 describe("failed initialize", () => {

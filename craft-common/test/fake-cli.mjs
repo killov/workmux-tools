@@ -19,6 +19,7 @@ const anyArgs = { type: "object", additionalProperties: true };
 const server = new Server({ name: "fakecraft", version: "0.0.0" }, { capabilities: { tools: {} } });
 server.setRequestHandler(ListToolsRequestSchema, () => ({
   tools: [
+    { name: "argv", description: "Answers its own command line arguments as JSON.", inputSchema: anyArgs },
     { name: "echo", description: "Answers its arguments as JSON.", inputSchema: anyArgs },
     { name: "export_bad", description: "Answers inline file data that is not JSON.", inputSchema: anyArgs },
     { name: "export_fmt", description: "Answers {format, dataBase64}.", inputSchema: anyArgs },
@@ -29,6 +30,7 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
 server.setRequestHandler(CallToolRequestSchema, (req) => {
   const args = req.params.arguments || {};
   const text = {
+    argv: () => JSON.stringify(process.argv.slice(2)),
     echo: () => JSON.stringify(args),
     set_property: () => JSON.stringify(args),
     export_bad: () => '{"format":"png","dataBase64":"aGVsbG8gd29ybGQ=',
