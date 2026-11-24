@@ -32,6 +32,8 @@ const SCHEMAS = {
 };
 const MAX_TOOL_NAME = 64;
 const TOOL_NAME_RE = /^[A-Za-z0-9_-]+$/;
+// Sdílený základ ArtCraft pluginů: není to plugin, jeho kopie žijí ve složkách s `craft.json` (craft-common/README.md).
+const CRAFT_COMMON = "craft-common";
 
 const out = (line) => process.stdout.write(`${line}\n`);
 function finish(result, code) {
@@ -64,6 +66,9 @@ function isPluginDir(dir) {
   return Boolean(manifestFile(dir));
 }
 
+/** ArtCraft plugin = složka s `craft.json`, generované soubory má z `craft-common/`. */
+const isCraftDir = (dir) => fs.existsSync(path.join(ROOT, dir, "craft.json"));
+
 function listPluginDirs() {
   return fs
     .readdirSync(ROOT, { withFileTypes: true })
@@ -92,11 +97,13 @@ const hasRuntimeSurface = (f) => !/\.mdx?$/i.test(f) && !/(^|\/)docs?\//i.test(f
 function cmdChanged(flags) {
   const files = changedFiles(flags.base);
   const topDirs = (list) => [...new Set(list.filter((f) => f.includes("/") && !f.startsWith(".")).map((f) => f.split("/")[0]).filter(isDir))];
-  const plugins = topDirs(files).filter(isPluginDir);
+  // Změna `craft-common/` se týká všech ArtCraft pluginů (sync --check ve validate, build jejich image).
+  const withCraft = (dirs) => (dirs.includes(CRAFT_COMMON) ? [...new Set([...dirs, ...listPluginDirs().filter(isCraftDir)])] : dirs);
+  const plugins = withCraft(topDirs(files)).filter(isPluginDir);
   // Image se staví jen tam, kde se změnilo něco jiného než dokumentace.
-  const runtimePlugins = topDirs(files.filter(hasRuntimeSurface)).filter(isPluginDir);
+  const runtimePlugins = withCraft(topDirs(files.filter(hasRuntimeSurface))).filter(isPluginDir);
   // Složka bez manifestu, do které přibyly soubory = nový plugin rozpracovaný bez manifestu.
-  const orphanDirs = topDirs(files).filter((d) => !isPluginDir(d));
+  const orphanDirs = topDirs(files).filter((d) => !isPluginDir(d) && d !== CRAFT_COMMON);
   out(`changed files: ${files.length}`);
   out(`changed plugins: ${plugins.join(", ") || "(none)"}`);
   out(`plugins to build: ${runtimePlugins.join(", ") || "(none)"}`);
@@ -152,6 +159,11 @@ function conventionChecks(dir, manifest) {
         warnings.push(`${path.relative(ROOT, dockerfile)}: stahuje přes curl/wget bez ověření sha256`);
       }
     }
+  }
+  // Generované kopie z craft-common/ musí sedět (ruční úprava nebo zapomenutý sync = červená).
+  if (isCraftDir(dir)) {
+    const sync = spawnSync(process.execPath, [path.join(ROOT, CRAFT_COMMON, "sync.mjs"), "--check", dir], { encoding: "utf8" });
+    if (sync.status !== 0) errors.push(`${dir}: generované soubory nesedí s craft-common/ — ${(sync.stderr || sync.stdout).trim().replace(/\n/g, "; ")}`);
   }
   for (const s of manifest.secrets || []) {
     if (s.required === undefined) warnings.push(`secret ${s.env}: bez "required" je povinný a blokuje build — je to záměr?`);

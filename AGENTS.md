@@ -10,7 +10,11 @@ The container contract is in [README.md](README.md#the-contract) — read it bef
   `https://app.workmux.com/schemas/workmux-plugin.v1.json`), `Dockerfile`, the MCP server (`server.mjs` on Node 22 +
   `@modelcontextprotocol/sdk`), `package.json` + `package-lock.json`, `README.md`. `workmux-tool.json` is a legacy
   name the server still reads; new and renamed plugins use `workmux-plugin.json`.
-- The build context is the plugin's folder only; no code shared between folders.
+- The build context is the plugin's folder only; no code shared between folders at build time.
+- Exception: [`craft-common/`](craft-common/) (not a plugin) is the shared base of the ArtCraft plugins (folders with
+  a `craft.json`, e.g. `photocraft/`). Their `server.mjs`, `meminfo.c`, `package.json`, `package-lock.json` and
+  `Dockerfile` are generated copies: never edit them by hand, change `craft.json` or `craft-common/` and run
+  `node craft-common/sync.mjs`. The gate fails when a copy is out of sync.
 - `slug` = folder name. Tool names are short `snake_case`; `<slug>__<tool>` has at most 64 characters.
 - Patterns to reuse: [`solidcraft/`](solidcraft/) (wraps a stdio MCP server, confines paths to `/work`, turns inline
   images into files), [`gws/`](gws/) (wraps a CLI with a few generic tools, optional secrets, OAuth header).

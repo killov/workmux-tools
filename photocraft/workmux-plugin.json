@@ -1,0 +1,60 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "photocraft",
+  "name": "PhotoCraft",
+  "description": "Headless PSD-compatible image editor (PhotoCraft from ArtCraft, open source, written in Rust). Opens photos and layered documents (PSD/PSB, TIFF, PNG, JPEG, WebP, HEIC, XCF, Krita, OpenRaster, SVG…), edits them with 500+ commands of the desktop app — crop and resize, layers and masks, adjustment layers, filters (sharpen, blur, noise…), brightness/contrast, levels, curves, type — renders PNG previews and exports PNG, JPEG, WebP, TIFF, PSD and more.",
+  "instructions": "PhotoCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's image to /work and open it: doc_open {\"path\":\"/work/photo.jpg\"} (PSD/PSB, TIFF, PNG, JPEG, WebP, GIF, HEIC, XCF, KRA, ORA, SVG, .pcraft…). For a blank canvas use doc_new {\"width\":1920,\"height\":1080}.\n2. Find the command: command_list {\"filter\":\"crop\"} (also \"sharpen\", \"contrast\", \"levels\", \"resize\", \"blur\"…). The registry has 500+ commands, so always pass a filter; never list them all. Each entry's params tells the parameters and their ranges; doc_inspect shows the document size, layers and history.\n3. Run it: command_run {\"id\":\"image.crop\",\"params\":{\"x\":0,\"y\":112,\"width\":1200,\"height\":675}}, command_run {\"id\":\"filter.sharpen.smartSharpen\",\"params\":{\"amount\":80}}, command_run {\"id\":\"image.adjustments.brightnessContrast\",\"params\":{\"contrast\":30}}. Several steps at once go through command_batch {\"steps\":[{\"id\":...,\"params\":{...}}, ...]}. Undo with command_run {\"id\":\"edit.undo\"}.\n4. Check the result: doc_inspect, and render_preview {} saves a PNG preview into /work and returns its path (no inline image) — download it to look at it or to show it.\n5. Export: doc_export {\"path\":\"/work/<name>.png\"}; the extension picks the format (png, jpg, webp, tif, psd, psb, gif, bmp, tga, exr, pdf…; quality for JPEG/WebP). Use a new file name for every export. To continue editing later keep the layers: doc_save {\"path\":\"/work/<name>.psd\"} or .pcraft.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. A new MCP session (e.g. after a reconnect) starts with no open document, so save layered work (.psd/.pcraft) after each stage and reopen it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "jpg", "description": "JPEG photo to edit" },
+      { "type": "png", "description": "PNG image to edit" },
+      { "type": "webp", "description": "WebP image to edit" },
+      { "type": "heic", "description": "HEIC photo from an iPhone or Mac (read only)" },
+      { "type": "tiff", "description": "TIFF image (.tif/.tiff), flat or with Photoshop layers" },
+      { "type": "psd", "description": "Layered Photoshop document" },
+      { "type": "psb", "description": "Large Photoshop document" },
+      { "type": "pcraft", "description": "PhotoCraft document saved earlier" },
+      { "type": "gif", "description": "GIF image" },
+      { "type": "bmp", "description": "BMP image" },
+      { "type": "tga", "description": "TGA image" },
+      { "type": "exr", "description": "OpenEXR HDR image" },
+      { "type": "hdr", "description": "Radiance HDR image" },
+      { "type": "svg", "description": "SVG drawing, opens as shape layers" },
+      { "type": "pdf", "description": "PDF pages to rasterize and edit" },
+      { "type": "xcf", "description": "GIMP document with layers (read only)" },
+      { "type": "kra", "description": "Krita document with layers (read only)" },
+      { "type": "ora", "description": "OpenRaster document with layers" },
+      { "type": "pdn", "description": "Paint.NET document with layers (read only)" },
+      { "type": "afphoto", "description": "Affinity Photo document (read only)" }
+    ],
+    "returns": [
+      { "type": "png", "description": "Edited image or render_preview PNG" },
+      { "type": "jpg", "description": "Edited photo as JPEG" },
+      { "type": "webp", "description": "Edited image as WebP (lossy or lossless)" },
+      { "type": "tiff", "description": "Edited image as TIFF, optionally with layers" },
+      { "type": "psd", "description": "Layered Photoshop document" },
+      { "type": "psb", "description": "Large layered Photoshop document" },
+      { "type": "pcraft", "description": "PhotoCraft document to continue editing later" },
+      { "type": "ora", "description": "OpenRaster document with layers" },
+      { "type": "gif", "description": "GIF image" },
+      { "type": "bmp", "description": "BMP image" },
+      { "type": "tga", "description": "TGA image" },
+      { "type": "exr", "description": "OpenEXR HDR image" },
+      { "type": "pdf", "description": "Flattened image as PDF" }
+    ]
+  }
+}

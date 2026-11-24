@@ -1,0 +1,13 @@
+{
+  "app": "photocraft",
+  "name": "PhotoCraft",
+  "repo": "storytold/photocraft",
+  "version": "0.23.1",
+  "sha256": {
+    "x86_64": "baabdcdbe46df2f72ccf6ecc2e98be00fbc33dbd4c1cd9426362a89a4b95f673",
+    "aarch64": "ee297409f1efc0a0b648eb0b44b0c879e3cc5408dc149ffda1e630a5a204f388"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_", "^control_call$"],
+  "callTimeoutMs": 300000
+}
