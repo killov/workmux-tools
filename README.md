@@ -30,6 +30,7 @@ workmux-tools/
 ├── cadcraft/                CADCraft — 2D CAD drafting (ArtCraft), built from craft-common/
 ├── effectcraft/             EffectCraft — motion graphics and VFX (ArtCraft), built from craft-common/
 ├── anicraft/                AniCraft — 2D vector animation (ArtCraft), built from craft-common/
+├── texturecraft/            TextureCraft — 3D texture painting (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -51,6 +52,7 @@ workmux-tools/
 | [`cadcraft`](cadcraft/) | [CADCraft](https://getartcraft.com/apps/cadcraft) 2D CAD drafting (ArtCraft): open DXF/DWG, AutoCAD-style commands and scripts, dimensions, layers, blocks, export DXF/DWG/PDF/SVG |
 | [`effectcraft`](effectcraft/) | [EffectCraft](https://getartcraft.com/apps/effectcraft) motion graphics and VFX (ArtCraft): compositions, text/shape/solid layers, keyframes and expressions, effects, import video/images/AEP/Lottie, render MP4/MOV/WebM/GIF/PNG sequence |
 | [`anicraft`](anicraft/) | [AniCraft](https://getartcraft.com/apps/anicraft) 2D vector animation (ArtCraft): draw, symbols, motion and shape tweens, import SVG/PNG/sound, export GIF/MP4/WebM/Lottie/SVG |
+| [`texturecraft`](texturecraft/) | [TextureCraft](https://getartcraft.com/apps/texturecraft) 3D texture painting (ArtCraft): import GLB/FBX/OBJ/USD, smart materials, paint, bake mesh maps, render previews, export PNG texture sets and textured GLB/USDZ |
 
 ## Add a plugin to WorkMux
 

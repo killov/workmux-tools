@@ -1,12 +1,13 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
-// `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft plugin. Every MCP
-// session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP over stdio in
-// WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This server
-// forwards tools and resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux plugin
-// contract on top:
-//   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
+// `relativePaths`, `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft
+// plugin. Every MCP session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP over
+// stdio in WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This
+// server forwards tools and resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux
+// plugin contract on top:
+//   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it, and the child gets them
+//     relative to WORK_DIR when its engine refuses absolute ones (`relativePaths`),
 //   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
 //     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned,
 //   - every call has a timeout, unknown sessions get 404, SIGTERM shuts down within seconds.
@@ -62,7 +63,8 @@ const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
 // Argument keys that name a file or directory (doc_open.path, doc_export.path, doc_export_layers.dir, …; the
 // tool names differ between the Craft apps). Top-level values become absolute paths in WORK_DIR. Inside nested
 // objects (command_run params, command_batch steps) they are checked against WORK_DIR as well but passed on as
-// they are: a relative value can be something else there, e.g. a VectorCraft path object id. Any other string,
+// they are (normalized relative to WORK_DIR with `relativePaths`): a relative value can be something else there,
+// e.g. a VectorCraft path object id. Any other string,
 // under any key and at any depth, is checked too when it looks like a path (absolute or going up with ..).
 const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "output", "dir", "directory", "folder"]);
 // `nonFileArgs` in craft.json names top-level keys of one app's tools that are not files despite their name
@@ -81,6 +83,10 @@ const NESTED_FILE_KEYS = new Set([
   ...(CRAFT.fileKeys ?? []),
 ]);
 const FILE_LIST_KEYS = new Set(["paths", "files"]);
+// An engine that takes only forward-slash paths relative to its roots (TextureCraft refuses an absolute path even
+// inside the root, and a `.` or `..` step) gets every checked file path relative to WORK_DIR, "." for WORK_DIR itself.
+const RELATIVE_PATHS = CRAFT.relativePaths ?? false;
+const enginePath = (abs) => (RELATIVE_PATHS ? path.relative(WORK_DIR, abs) || "." : abs);
 // JSON keys of file bytes in the child's answers; `base64Keys` in craft.json adds keys of one app (FigCraft's export
 // answers {"format": ..., "data": ...}), a key as generic as `data` is not base64 in every app.
 const APP_BASE64_KEYS = new Set(CRAFT.base64Keys ?? []);
@@ -104,7 +110,7 @@ const MAGIC_BY_FORMAT = new Map(Object.entries({
   pptx: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
 }));
 // Tools that answer with an inline image.
-const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
+const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot", "viewport_render"]);
 // An engine that bounces audio but cannot write MP3 (SoundCraft) gets encode_mp3 from this server, run with lame.
 const LAME = env.CRAFT_LAME_BIN || "lame";
 const execFileAsync = promisify(execFile);
@@ -170,8 +176,11 @@ function resolveInWork(value, what) {
 // Check an argument value under `key` (null for list items) and return it with lists of files rewritten.
 function prepareNested(key, value, where) {
   if (typeof value === "string") {
-    if (NESTED_FILE_KEYS.has(key) && value.trim() !== "") resolveInWork(value, where);
-    else if (looksLikePath(value)) resolveInWork(value, `${where} (looks like a path)`);
+    if (NESTED_FILE_KEYS.has(key) && value.trim() !== "") {
+      const abs = resolveInWork(value, where);
+      return RELATIVE_PATHS ? enginePath(abs) : value;
+    }
+    if (looksLikePath(value)) resolveInWork(value, `${where} (looks like a path)`);
     return value;
   }
   if (Array.isArray(value)) {
@@ -194,13 +203,14 @@ function extFor(mime) {
   return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif", "audio/wav": "wav", "audio/mpeg": "mp3" }[mime] || "bin";
 }
 
-// Rewrite tool arguments: top-level file arguments become absolute paths in WORK_DIR, everything else is checked.
+// Rewrite tool arguments: top-level file arguments become absolute paths in WORK_DIR (relative to it with
+// `relativePaths`), everything else is checked.
 function prepareArgs(tool, args) {
   const out = {};
   for (const [key, value] of Object.entries(args || {})) {
     const where = `${tool}.${key}`;
     if (isNonFileArg(tool, key)) out[key] = prepareNested(null, value, where);
-    else out[key] = typeof value === "string" && FILE_KEYS.has(key) ? resolveInWork(value, where) : prepareNested(key, value, where);
+    else out[key] = typeof value === "string" && FILE_KEYS.has(key) ? enginePath(resolveInWork(value, where)) : prepareNested(key, value, where);
   }
   return out;
 }
