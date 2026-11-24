@@ -23,6 +23,7 @@ workmux-tools/
 ├── lightcraft/              LightCraft — photo library and raw developer (ArtCraft), built from craft-common/
 ├── pdfcraft/                PdfCraft — PDF workbench (ArtCraft), built from craft-common/
 ├── figcraft/                FigCraft — interface design and prototyping (ArtCraft), built from craft-common/
+├── wordcraft/               WordCraft — word processor (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -37,6 +38,7 @@ workmux-tools/
 | [`lightcraft`](lightcraft/) | [LightCraft](https://getartcraft.com/apps/lightcraft) photo library and raw developer (ArtCraft): import RAW (DNG/CR3/NEF/ARW…), JPEG and TIFF, exposure, white balance, tone, crop, presets, export JPEG/TIFF/PNG |
 | [`pdfcraft`](pdfcraft/) | [PdfCraft](https://getartcraft.com/apps/pdfcraft) PDF workbench (ArtCraft): open, merge PDFs and images, split, reorder and rotate pages, password-protect, redact, watermark, fill forms, export PDF/PNG/text/Word |
 | [`figcraft`](figcraft/) | [FigCraft](https://getartcraft.com/apps/figcraft) interface design (ArtCraft): open .fig/.sketch/SVG/images, frames, auto layout, text, components, styles, prototyping, export PNG/SVG/PDF |
+| [`wordcraft`](wordcraft/) | [WordCraft](https://getartcraft.com/apps/wordcraft) word processor (ArtCraft): open DOCX/ODT/RTF/Markdown, styles and headings, tables, lists, track changes, export DOCX/ODT/PDF |
 
 ## Add a plugin to WorkMux
 

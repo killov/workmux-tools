@@ -1,0 +1,40 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "wordcraft",
+  "name": "WordCraft",
+  "description": "Headless word processor (WordCraft from ArtCraft, open source, written in Rust). Writes and edits documents with styles, headings, tables, lists, track changes, comments and mail merge; opens DOCX, DOC, ODT, RTF, Markdown, HTML, plain text and TeX; saves DOCX, ODT, RTF, Markdown, HTML and plain text and exports PDF and PNG page previews.",
+  "instructions": "WordCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's file to /work and open it: open_document {\"path\":\"/work/notes.md\"} reads .docx, .doc, .odt, .rtf, .md, .html, .txt and .tex; Markdown headings and tables become Heading N styles and real tables. Or start empty with new_document {\"template\":\"blank\"}.\n2. Write with type_text {\"text\":\"...\",\"paragraphs\":true} and execute {\"command\":\"text.newParagraph\"}; move the caret with execute {\"command\":\"caret.docEnd\"}. Make the current paragraph a heading with execute {\"command\":\"para.style\",\"params\":{\"style\":\"Heading 1\"}} (or para.heading1). Insert a table at the caret with insert_table {\"values\":[[\"Region\",\"Revenue\"],[\"North\",\"120\"]],\"header\":true}.\n3. Everything else (lists, fonts, page setup, track changes, comments, mail merge…) is an engine command: list_commands {\"query\":\"table\"} — always pass a query, never list all — then execute {\"command\":...,\"params\":{...}}, or batch for several commands at once.\n4. Check the result: inspect_document shows the blocks with their styles and tables, get_text the plain text; render_page {\"page\":1} saves a PNG of the page into /work and returns its path (no inline image) — download it to look at it.\n5. Save always with a path in /work, the format follows the extension: save_document {\"path\":\"/work/report.docx\"}, then save_document {\"path\":\"/work/report.pdf\"}; the same with .odt, .rtf, .md or .html. Use new file names, never overwrite the user's input.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. Any text argument that starts with / or ../ (also in type_text and insert_table) is checked as a file path and refused when it points outside /work, so rephrase such text (e.g. \"etc folder\" instead of \"/etc\"). A new MCP session (e.g. after a reconnect) starts with no open document, so save a .docx after each stage and reopen it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "docx", "description": "Word document to edit or convert" },
+      { "type": "doc", "description": "Legacy Word document to edit or convert" },
+      { "type": "odt", "description": "OpenDocument text to edit or convert" },
+      { "type": "rtf", "description": "Rich Text document to edit or convert" },
+      { "type": "md", "description": "Markdown text to turn into a formatted document" },
+      { "type": "txt", "description": "Plain text to turn into a document" },
+      { "type": "html", "description": "HTML page to turn into a document" }
+    ],
+    "returns": [
+      { "type": "docx", "description": "Saved Word document" },
+      { "type": "odt", "description": "Saved OpenDocument text" },
+      { "type": "pdf", "description": "Document exported as PDF" },
+      { "type": "rtf", "description": "Saved Rich Text document" },
+      { "type": "md", "description": "Document saved as Markdown" },
+      { "type": "png", "description": "Preview of a page" }
+    ]
+  }
+}

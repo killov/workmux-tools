@@ -1,0 +1,13 @@
+{
+  "app": "wordcraft",
+  "name": "WordCraft",
+  "repo": "storytold/wordcraft",
+  "version": "0.18.1",
+  "sha256": {
+    "x86_64": "9b557161ded7b5973112c8c21f600fe0b0110c1a4d3151184485733c96f87e19",
+    "aarch64": "a6e7558d9b9c436c9b71df746af2bb36d8e498452af65115d17fddeeb28a9522"
+  },
+  "aptPackages": [],
+  "hideTools": ["^screenshot$", "^click$", "^key$", "^ui_inspect$", "^parity$"],
+  "callTimeoutMs": 300000
+}
