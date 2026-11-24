@@ -1,0 +1,397 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "title": "WorkMux plugin manifest (workmux-plugin.json), version 1",
+  "description": "Everything WorkMux needs to build and run a project plugin: a Docker image with an MCP server inside that bots use as an MCP server. Put it into the root (or a subdirectory) of a git repository and add the plugin in Project settings → Plugins with the repository URL.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "slug", "name", "description", "instructions", "mcp"],
+  "oneOf": [{ "required": ["build"] }, { "required": ["image"] }],
+  "properties": {
+    "$schema": {
+      "description": "URL of this schema, so editors can validate and complete the manifest.",
+      "type": "string",
+      "maxLength": 300
+    },
+    "version": {
+      "description": "Version of the manifest format.",
+      "const": 1
+    },
+    "pluginVersion": {
+      "description": "Version of the plugin itself (semver, e.g. 1.4.0) — not of this format. WorkMux compares it with the installed one and offers an update when the repository has a higher one. Without it the version is the commit of the build.",
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?(\\+[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "changelog": {
+      "description": "What changed in this version — a short text or an https:// URL of the release notes. Shown next to the update offer.",
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "slug": {
+      "description": "Short id of the plugin. Bots see its MCP tools as <slug>__<tool>, so it is a DNS label: lowercase letters, digits and dashes, at most 40 characters.",
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$"
+    },
+    "name": {
+      "description": "Display name of the plugin.",
+      "type": "string",
+      "maxLength": 80,
+      "pattern": "\\S"
+    },
+    "description": {
+      "description": "What the plugin does — shown to people and to bots.",
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "instructions": {
+      "description": "How a bot should use the plugin: which files it takes, the typical workflow, how to get the result out.",
+      "type": "string",
+      "maxLength": 8000,
+      "pattern": "\\S"
+    },
+    "build": {
+      "description": "Build the image from a Dockerfile in this repository. Exactly one of build or image.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dockerfile": {
+          "description": "Path of the Dockerfile, relative to the build context. Default Dockerfile.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "default": "Dockerfile"
+        },
+        "context": {
+          "description": "Build context directory, relative to the directory of this manifest. It must stay inside the repository. Default \".\".",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "default": "."
+        },
+        "args": {
+          "description": "Build arguments { NAME: value }. Not for secrets — they end up in the image history.",
+          "type": "object",
+          "maxProperties": 50,
+          "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+          "additionalProperties": { "type": "string", "maxLength": 4096 }
+        }
+      }
+    },
+    "image": {
+      "description": "A ready image in a registry instead of build, e.g. ghcr.io/org/plugin:1.2.3 (pulled with the project's registry logins). Exactly one of build or image.",
+      "type": "string",
+      "maxLength": 255,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._\\-/:@]*$"
+    },
+    "mcp": {
+      "description": "Where the MCP server (streamable HTTP) listens inside the container. It must listen on 0.0.0.0, not localhost.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["port"],
+      "properties": {
+        "port": {
+          "description": "TCP port of the MCP server inside the container.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "path": {
+          "description": "URL path of the MCP endpoint. Default /mcp.",
+          "type": "string",
+          "maxLength": 200,
+          "pattern": "^/[A-Za-z0-9._~\\-/]*$",
+          "default": "/mcp"
+        }
+      }
+    },
+    "resources": {
+      "description": "Requested limits of one container. The project and the machine cap them; empty = the machine default for a sidecar.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "memoryMb": {
+          "description": "Memory limit in MB.",
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 262144
+        },
+        "cpus": {
+          "description": "CPU limit in cores (fractions allowed).",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 256
+        },
+        "gpu": {
+          "description": "NVIDIA GPU for the container: \"none\" = no GPU (default), \"optional\" = use the GPU when the machine has one, otherwise run without it, \"required\" = do not run on a machine without a GPU (the build and the MCP test still run there, without the GPU). The container gets WORKMUX_GPU=1 when it got the GPU, otherwise 0. An unknown value is read as \"none\".",
+          "anyOf": [
+            { "type": "string", "enum": ["none", "optional", "required"] },
+            { "type": "string", "maxLength": 40 }
+          ],
+          "default": "none"
+        }
+      }
+    },
+    "idleMinutes": {
+      "description": "Minutes of inactivity in a conversation after which its container and its /work volume are deleted. Default 30.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1440,
+      "default": 30
+    },
+    "env": {
+      "description": "Plain environment variables { NAME: value } of the container. No secrets — declare those in secrets. PATH, HOME, HOSTNAME and WORKMUX_* are reserved.",
+      "type": "object",
+      "maxProperties": 100,
+      "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+      "additionalProperties": { "type": "string", "maxLength": 8192 }
+    },
+    "secrets": {
+      "description": "Secret environment variables the plugin needs. Only names here — the values are picked from the project's passwords in the plugin settings.",
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["env", "description"],
+        "properties": {
+          "env": {
+            "description": "Name of the environment variable.",
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "maxLength": 100
+          },
+          "description": {
+            "description": "What the secret is (shown next to the password picker).",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "required": {
+            "description": "The plugin cannot run without it — the build fails until a value is set. Default true.",
+            "type": "boolean",
+            "default": true
+          },
+          "optional": {
+            "description": "The plugin runs without it (e.g. an alternative to an OAuth credential) — the build and the MCP test pass without a value. Same as required: false; do not combine with required: true.",
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "oauth": {
+      "description": "OAuth credentials of the project the plugin uses. WorkMux adds a fresh access token of the credential shared with the bot to every MCP request as the given header — never into the environment of the container. The token expires; read it from each request, do not cache it.",
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provider", "header"],
+        "properties": {
+          "provider": {
+            "description": "Slug of the provider: a preset (google, github, microsoft, slack, slack-user, notion) or a custom service the project connects through discovery / DCR.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,39}$"
+          },
+          "header": {
+            "description": "Lowercase name of the request header that carries the access token, e.g. x-workmux-oauth-token.",
+            "type": "string",
+            "pattern": "^x-[a-z0-9-]{1,60}$"
+          },
+          "scopes": {
+            "description": "Scopes the plugin needs. A preset takes short names from its catalog (drive, spreadsheets, repo …) or full scopes; WorkMux asks for them when connecting and reports the missing ones.",
+            "type": "array",
+            "maxItems": 50,
+            "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+          },
+          "optional": {
+            "description": "The plugin works without this credential too — the header is then just left out. Default false.",
+            "type": "boolean",
+            "default": false
+          },
+          "issuer": {
+            "description": "Only for a custom service: HTTPS URL of the authorization server, so WorkMux can discover it and register a client (DCR) when connecting.",
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "^https://"
+          },
+          "description": {
+            "description": "What the plugin does with the account (shown next to the Connect button).",
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "files": {
+      "description": "Files the plugin takes and returns (in /work). Informs bots.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accepts": { "$ref": "#/$defs/fileKinds", "description": "Files the plugin takes." },
+        "returns": { "$ref": "#/$defs/fileKinds", "description": "Files the plugin returns." }
+      }
+    },
+    "events": {
+      "description": "Events of an outside service (a new Slack message, a mention …) the plugin can deliver to the bot. When the plugin is attached to a bot, WorkMux creates a webhook URL for it and calls the subscribe tool of the plugin with { url, kinds } — the plugin registers the URL at the service. Incoming events wake the bot like a webhook monitor; the plugin container does not have to run for that.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subscribe", "kinds"],
+      "properties": {
+        "subscribe": {
+          "description": "MCP tools of the plugin that register and remove the webhook URL at the service.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tool"],
+          "properties": {
+            "tool": {
+              "description": "Tool called with { url, kinds } after the plugin is attached to a bot. It returns { registered: true, subscription? } when it registered the URL, or { registered: false, steps: [\"…\"] } with the steps a person has to do at the service (e.g. paste the URL into the settings of a Slack app).",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+            },
+            "unsubscribe": {
+              "description": "Tool called with { url, subscription } when the plugin is detached from the bot or deleted. Best effort — WorkMux stops accepting the URL either way.",
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+            }
+          }
+        },
+        "verify": {
+          "description": "How WorkMux checks that an event really comes from the service. Requests with a wrong signature get 401 and never wake the bot.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["scheme", "secretEnv"],
+          "properties": {
+            "scheme": {
+              "description": "Signature scheme: slack-v0 (X-Slack-Signature with X-Slack-Request-Timestamp) or github-sha256 (X-Hub-Signature-256).",
+              "type": "string",
+              "enum": ["slack-v0", "github-sha256"]
+            },
+            "secretEnv": {
+              "description": "Name of a secret from secrets whose value is the signing secret of the service (e.g. SLACK_SIGNING_SECRET).",
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+              "maxLength": 100
+            }
+          }
+        },
+        "kinds": {
+          "description": "Kinds of events the plugin subscribes to — passed to the subscribe tool and shown to people and to the bot.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["type", "description"],
+            "properties": {
+              "type": {
+                "description": "Event type as the service names it, e.g. message or app_mention.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,100}$"
+              },
+              "description": {
+                "description": "What the event means.",
+                "type": "string",
+                "maxLength": 300,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        "filter": {
+          "description": "jq expression that keeps only the events the bot should see (as in a webhook monitor), e.g. select(.event.type == \"app_mention\"). Empty = every request.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "extract": {
+          "description": "jq expression that turns the payload into the line the bot reads (as in a webhook monitor). Empty = the whole payload.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "dedupKey": {
+          "description": "jq expression with a unique id of the event, so a retry of the service does not wake the bot twice, e.g. .event_id. Empty = a hash of the body.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        }
+      }
+    },
+    "persist": {
+      "description": "Directories whose data outlive the conversation, the container and updates of the plugin (unlike /work). Each is a Docker volume on the machine of the plugin, shared by the whole project or kept per bot; it is deleted only with the plugin (or the bot).",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "scope"],
+        "properties": {
+          "path": {
+            "description": "Absolute directory in the container, e.g. /data. Not /work and not inside it.",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^/[A-Za-z0-9._\\-/]*$"
+          },
+          "scope": {
+            "description": "\"project\" = one volume for the whole project, \"bot\" = one volume per bot (a session gets its own).",
+            "type": "string",
+            "enum": ["project", "bot"]
+          }
+        }
+      }
+    },
+    "migrate": {
+      "description": "Command of the new version run once over the persist volumes during an update, after its MCP test and before the switch. A non-zero exit keeps the previous version. It must be idempotent and keep the data readable by the previous version — a rollback does not undo it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "description": "Command and its arguments (exec form), e.g. [\"node\", \"migrate.js\"]. Gets WORKMUX_MIGRATE_FROM and WORKMUX_MIGRATE_TO.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": { "type": "string", "minLength": 1, "maxLength": 4096 }
+        },
+        "timeoutSeconds": {
+          "description": "How long the command may run. Default 300.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fileKinds": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "description"],
+        "properties": {
+          "type": {
+            "description": "File extension without the dot (stl) or a MIME type (model/stl).",
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "^\\.?[A-Za-z0-9.+\\-/]+$"
+          },
+          "description": {
+            "description": "What the file is for.",
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "\\S"
+          }
+        }
+      }
+    }
+  }
+}

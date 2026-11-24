@@ -30,6 +30,13 @@ const SCHEMAS = {
   "workmux-plugin.json": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "workmux-tool.json": "https://app.workmux.com/schemas/workmux-tool.v1.json",
 };
+// Lokální schéma místo nasazeného: env WORKMUX_PLUGIN_SCHEMA, jinak vendorovaná kopie ze SPRINT1
+// (killov/workmuxtool), protože app.workmux.com ještě nezná `events`. todo: smazat kopii, až
+// app.workmux.com nasadí WOR-756.
+const VENDORED_PLUGIN_SCHEMA = path.join(ROOT, ".claude", "scripts", "schemas", "workmux-plugin.v1.schema.json");
+const SCHEMA_OVERRIDES = {
+  "workmux-plugin.json": process.env.WORKMUX_PLUGIN_SCHEMA || (fs.existsSync(VENDORED_PLUGIN_SCHEMA) ? VENDORED_PLUGIN_SCHEMA : null),
+};
 const MAX_TOOL_NAME = 64;
 const TOOL_NAME_RE = /^[A-Za-z0-9_-]+$/;
 // Sdílený základ ArtCraft pluginů: není to plugin, jeho kopie žijí ve složkách s `craft.json` (craft-common/README.md).
@@ -120,8 +127,9 @@ const isDir = (d) => {
 
 // --- validate --------------------------------------------------------------------------------
 
-async function loadSchema(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+async function loadSchema(source) {
+  if (!/^https?:\/\//.test(source)) return JSON.parse(fs.readFileSync(source.replace(/^file:\/\//, ""), "utf8"));
+  const res = await fetch(source, { signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -174,6 +182,7 @@ function conventionChecks(dir, manifest) {
 async function cmdValidate(dirs) {
   if (!dirs.length) dirs = listPluginDirs();
   const ajv = await makeAjv();
+  for (const [file, source] of Object.entries(SCHEMA_OVERRIDES)) if (source) out(`info: ${file} se validuje proti lokálnímu schématu ${source}`);
   const schemaCache = new Map();
   const results = [];
   let ok = true;
@@ -196,16 +205,17 @@ async function cmdValidate(dirs) {
       if (file === manifests[0]) primary = data;
       const url = SCHEMAS[file];
       if (data.$schema && data.$schema !== url) r.warnings.push(`${rel}: $schema je ${data.$schema}, čekám ${url}`);
-      let validate = schemaCache.get(url);
+      const source = SCHEMA_OVERRIDES[file] || url;
+      let validate = schemaCache.get(source);
       if (validate === undefined) {
         try {
-          validate = ajv.compile(await loadSchema(url));
+          validate = ajv.compile(await loadSchema(source));
         } catch (e) {
           validate = null;
-          r.errors.push(`${rel}: schéma ${url} nejde načíst (${e.message}) — manifest nejde ověřit`);
+          r.errors.push(`${rel}: schéma ${source} nejde načíst (${e.message}) — manifest nejde ověřit`);
         }
-        schemaCache.set(url, validate);
-      } else if (validate === null) r.errors.push(`${rel}: schéma ${url} nejde načíst — manifest nejde ověřit`);
+        schemaCache.set(source, validate);
+      } else if (validate === null) r.errors.push(`${rel}: schéma ${source} nejde načíst — manifest nejde ověřit`);
       if (validate && !validate(data)) {
         for (const err of validate.errors) r.errors.push(`${rel}: ${err.instancePath || "/"} ${err.message}${err.params?.additionalProperty ? ` (${err.params.additionalProperty})` : ""}`);
       }

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "slack",
+  "name": "Slack",
+  "description": "Slack through the Slack Web API: send messages and thread replies, read channels and threads, search, add reactions, list channels and users. Delivers Slack events (mentions of the app, new messages in its channels and DMs, reactions) to the bot: WorkMux subscribes the webhook itself. Authenticates with a WorkMux Slack OAuth connection or a bot token secret.",
+  "instructions": "Slack through the Slack Web API. Tools: auth_status, list_channels, list_users, send_message, read_channel, read_thread, search, add_reaction (events_subscribe and events_unsubscribe are called by WorkMux itself, never call them).\n\n1. Check access: auth_status returns the workspace, the bot's own user_id and bot_id and which token is used. Remember user_id: it is how you recognise your own messages and mentions of you (<@user_id>). With no token, tell the owner to connect Slack in WorkMux (the tool explains how).\n2. Find ids: list_channels (id, name, is_member) and list_users (id, name, real_name). Tools take channel ids (C…, G…, D…), not names. The bot only sees channels it was invited to (/invite @app in Slack); not_in_channel means invite it first.\n3. Write: send_message {channel, text} posts a message; add thread_ts to reply in a thread. Text is Slack mrkdwn: *bold*, _italic_, `code`, <@U123> mentions a user, <https://example.com|label> is a link. Ask the user before posting somewhere they did not ask for.\n4. Read: read_channel {channel} returns the newest messages (cursor for older pages, oldest/latest as ts bounds); read_thread {channel, thread_ts} returns a thread, the parent first.\n5. React: add_reaction {channel, timestamp, name} with an emoji name without colons, e.g. eyes or white_check_mark.\n6. Search: search {query} needs a user token with search:read (the Slack (user token) connection or SLACK_USER_TOKEN); with only a bot token it explains what is missing.\n\nAnswering a Slack event: the event line reads `<type> channel=<id> ts=<ts> thread_ts=<ts> user=<id>: <text>`. Reply with send_message {channel, thread_ts, text} using channel and thread_ts from the line (thread_ts is the thread of the message, or the message itself when it is not in a thread), so the answer lands in the thread. Never answer your own messages (user equals your user_id) or other bots' messages: that loops. A mention of you in a channel arrives twice, as app_mention and as message containing <@your user_id>: answer the app_mention and ignore that message. For reaction_added, react only when the user asked for something by the reaction. Read the thread with read_thread first when you need the context.\n\nThe plugin works with no files: nothing is uploaded or downloaded, and no file content or base64 goes through its tools.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 128,
+    "cpus": 0.25
+  },
+  "idleMinutes": 30,
+  "secrets": [
+    {
+      "env": "SLACK_SIGNING_SECRET",
+      "description": "Signing secret of the Slack app (Basic Information → App Credentials). WorkMux checks the signature of incoming events with it; the plugin never reads it.",
+      "required": false
+    },
+    {
+      "env": "SLACK_BOT_TOKEN",
+      "description": "Bot User OAuth Token (xoxb-…) of the Slack app, instead of the Slack OAuth connection.",
+      "required": false
+    },
+    {
+      "env": "SLACK_USER_TOKEN",
+      "description": "User OAuth Token (xoxp-…) with search:read, only for the search tool, instead of the Slack (user token) connection.",
+      "required": false
+    },
+    {
+      "env": "SLACK_APP_CONFIG_TOKEN",
+      "description": "App configuration access token (xoxe.xoxp-…, valid 12 hours). With SLACK_APP_ID the plugin registers the event subscription in the app itself.",
+      "required": false
+    },
+    {
+      "env": "SLACK_APP_ID",
+      "description": "App ID of the Slack app (A…, Basic Information), used with SLACK_APP_CONFIG_TOKEN.",
+      "required": false
+    }
+  ],
+  "oauth": [
+    {
+      "provider": "slack",
+      "header": "x-workmux-oauth-token",
+      "scopes": [
+        "chat:write",
+        "channels:read",
+        "channels:history",
+        "groups:read",
+        "groups:history",
+        "im:read",
+        "im:history",
+        "mpim:history",
+        "app_mentions:read",
+        "reactions:read",
+        "reactions:write",
+        "users:read"
+      ],
+      "optional": true,
+      "description": "Slack app installed in the workspace; the bot posts and reads as the app (bot token)."
+    },
+    {
+      "provider": "slack-user",
+      "header": "x-workmux-slack-user-token",
+      "scopes": [
+        "search:read"
+      ],
+      "optional": true,
+      "description": "Only for the search tool: Slack search works with a user token."
+    }
+  ],
+  "events": {
+    "subscribe": {
+      "tool": "events_subscribe",
+      "unsubscribe": "events_unsubscribe"
+    },
+    "verify": {
+      "scheme": "slack-v0",
+      "secretEnv": "SLACK_SIGNING_SECRET"
+    },
+    "kinds": [
+      {
+        "type": "app_mention",
+        "description": "Someone mentioned the app (@app) in a channel it is in"
+      },
+      {
+        "type": "message",
+        "description": "A new message in a channel or DM the app is in (bot events message.channels, message.groups, message.im, message.mpim)"
+      },
+      {
+        "type": "reaction_added",
+        "description": "Someone added an emoji reaction to a message in a channel the app is in"
+      }
+    ],
+    "filter": "select(.type == \"event_callback\" and .event.bot_id == null and ((.event.subtype // \"\") | IN(\"\", \"thread_broadcast\", \"file_share\")))",
+    "extract": "\"\\(.event.type) channel=\\(.event.channel // .event.item.channel) ts=\\(.event.ts // .event.item.ts) thread_ts=\\(.event.thread_ts // .event.ts // .event.item.ts) user=\\(.event.user): \\(.event.text // .event.reaction // \"\")\"",
+    "dedupKey": ".event_id"
+  }
+}
