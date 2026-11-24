@@ -1,8 +1,8 @@
-// WorkMux tool: SolidCraft (headless parametric CAD) behind a streamable HTTP MCP endpoint.
+// WorkMux plugin: SolidCraft (headless parametric CAD) behind a streamable HTTP MCP endpoint.
 //
 // Every MCP session gets its own `solidcraft-cli mcp --headless` child process (one design
 // session), talking MCP over stdio. This server forwards tools/list and tools/call to it and
-// enforces the WorkMux tool contract on top:
+// enforces the WorkMux plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
 //   - files never travel inline: images the child returns (screenshot, compare_picture overlay)
 //     are written as PNG files into WORK_DIR and only their paths are returned,
@@ -67,7 +67,7 @@ const WORKMUX_NOTE = [
   "every path you pass (open, save, export, screenshot, compare_picture reference, batch path,",
   "file paths inside execute/batch params) must be inside /work; relative paths resolve against /work.",
   "Tools never return file contents: screenshot saves a PNG into /work and returns its path.",
-  "To hand a file to the user, download it from /work with tool_download_file.",
+  "To hand a file to the user, download it from /work with plugin_download_file.",
   "Save the design (save {path: \"/work/<name>.sc\"}) after each stage: a new MCP session starts a fresh, empty design.",
 ].join(" ");
 
@@ -145,12 +145,12 @@ function externalizeContent(tool, args, result) {
       if (tool === "screenshot" && !screenshotImageHandled && args.path && fs.existsSync(args.path)) {
         // SolidCraft already wrote this PNG to args.path.
         screenshotImageHandled = true;
-        content.push({ type: "text", text: `PNG saved to ${args.path} (${fs.statSync(args.path).size} bytes). Download it with tool_download_file to show it.` });
+        content.push({ type: "text", text: `PNG saved to ${args.path} (${fs.statSync(args.path).size} bytes). Download it with plugin_download_file to show it.` });
         continue;
       }
       const file = path.join(WORK_DIR, `${tool}-${stamp()}.${extFor(block.mimeType)}`);
       fs.writeFileSync(file, Buffer.from(block.data, "base64"));
-      content.push({ type: "text", text: `${block.type === "image" ? "Image" : "Audio"} (${block.mimeType}) saved to ${file}. Download it with tool_download_file to show it.` });
+      content.push({ type: "text", text: `${block.type === "image" ? "Image" : "Audio"} (${block.mimeType}) saved to ${file}. Download it with plugin_download_file to show it.` });
     } else if (block.type === "resource" && block.resource && typeof block.resource.blob === "string") {
       const file = path.join(WORK_DIR, `${tool}-${stamp()}.${extFor(block.resource.mimeType)}`);
       fs.writeFileSync(file, Buffer.from(block.resource.blob, "base64"));

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "gws",
+  "name": "Google Workspace",
+  "description": "Google Workspace APIs through the official Google Workspace CLI (gws): Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, People, Chat, Forms, Meet and more. A few generic tools run any gws command, describe API methods and show help; files are exchanged through /work. Authenticates with an OAuth access token from WorkMux, an access token secret or a service account key.",
+  "instructions": "Google Workspace through the gws CLI: Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, People, Chat, Forms, Meet, Keep, Classroom and Apps Script. Four tools: run, schema, help, auth_status.\n\n1. Check access: auth_status says which Google identity is used. With a service account, share the Drive files, folders or calendars with its e-mail first; it has no Gmail mailbox. With no credentials, tell the owner to set them in WorkMux (the plugin explains how).\n2. Find the method: help [] lists services; help [\"drive\"] lists resources and + helpers; help [\"drive\",\"files\"] lists methods; help [\"gmail\",\"+send\"] shows a helper's flags. Commands mirror the REST API: gws <service> <resource> [sub-resource] <method>.\n3. Read its parameters: schema {\"method\":\"drive.files.list\"}. Query/path parameters go to --params as one JSON string, the request body to --json.\n4. Call run with args as an array of strings (no shell, no quoting). Examples:\n   - Drive list: [\"drive\",\"files\",\"list\",\"--params\",\"{\\\"pageSize\\\":20,\\\"q\\\":\\\"trashed=false\\\",\\\"fields\\\":\\\"files(id,name,mimeType,modifiedTime)\\\"}\"]\n   - Drive download: [\"drive\",\"files\",\"get\",\"--params\",\"{\\\"fileId\\\":\\\"ID\\\",\\\"alt\\\":\\\"media\\\"}\",\"--output\",\"/work/report.pdf\"] (Google Docs: drive files export with mimeType)\n   - Drive upload: [\"drive\",\"+upload\",\"/work/report.pdf\",\"--name\",\"Report\"]\n   - Sheets read: [\"sheets\",\"+read\",\"--spreadsheet\",\"ID\",\"--range\",\"Sheet1!A1:D20\"]\n   - Sheets append: [\"sheets\",\"+append\",\"--spreadsheet\",\"ID\",\"--values\",\"Alice,95\"]\n   - Docs get: [\"docs\",\"documents\",\"get\",\"--params\",\"{\\\"documentId\\\":\\\"ID\\\"}\"]\n   - Calendar events: [\"calendar\",\"+agenda\"] or [\"calendar\",\"events\",\"list\",\"--params\",\"{\\\"calendarId\\\":\\\"primary\\\",\\\"timeMin\\\":\\\"2026-01-01T00:00:00Z\\\",\\\"singleEvents\\\":true,\\\"orderBy\\\":\\\"startTime\\\",\\\"maxResults\\\":20}\"]\n   - Gmail list: [\"gmail\",\"users\",\"messages\",\"list\",\"--params\",\"{\\\"userId\\\":\\\"me\\\",\\\"q\\\":\\\"is:unread\\\",\\\"maxResults\\\":10}\"] or [\"gmail\",\"+triage\"]\n   - Gmail send: [\"gmail\",\"+send\",\"--to\",\"a@example.com\",\"--subject\",\"Hi\",\"--body\",\"Text\",\"--attach\",\"/work/file.pdf\"]\n   Add --dry-run to see the request without sending it. Ask the user before sending mail, deleting or sharing.\n5. Files: every file path (--upload, --output, --output-dir, --attach, drive +upload, script +push --dir) must be in /work. Bring user files in with plugin_upload_file, hand results over with plugin_download_file. Output over 64 KB is saved to /work and its path returned; narrow requests with fields, pageSize or --page-limit.\n\ngws auth login/setup/export/logout are disabled: credentials come from WorkMux. gmail +watch and events +subscribe need --once. The container and /work are deleted after the conversation is idle.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 256,
+    "cpus": 0.5
+  },
+  "idleMinutes": 30,
+  "secrets": [
+    {
+      "env": "GOOGLE_SERVICE_ACCOUNT_JSON",
+      "description": "Service account key JSON (the whole file). The plugin then acts as the service account: share files and calendars with its e-mail.",
+      "required": false
+    },
+    {
+      "env": "GOOGLE_WORKSPACE_CLI_TOKEN",
+      "description": "OAuth2 access token for Google APIs (expires after about an hour; an OAuth connection is better).",
+      "required": false
+    }
+  ],
+  "oauth": [
+    {
+      "provider": "google",
+      "header": "x-workmux-oauth-token",
+      "scopes": [
+        "drive",
+        "spreadsheets",
+        "calendar",
+        "documents",
+        "gmail.modify",
+        "gmail.send"
+      ],
+      "description": "Google account the plugin acts as (OAuth connection of the project shared with the bot)."
+    }
+  ],
+  "files": {
+    "accepts": [
+      {
+        "type": "pdf",
+        "description": "File to upload to Drive or attach to an e-mail (any type works)"
+      },
+      {
+        "type": "csv",
+        "description": "Data to upload or import into Sheets"
+      },
+      {
+        "type": "docx",
+        "description": "Document to upload to Drive"
+      },
+      {
+        "type": "xlsx",
+        "description": "Spreadsheet to upload to Drive"
+      },
+      {
+        "type": "png",
+        "description": "Image to upload or attach"
+      }
+    ],
+    "returns": [
+      {
+        "type": "pdf",
+        "description": "Drive download or export"
+      },
+      {
+        "type": "csv",
+        "description": "Sheet export"
+      },
+      {
+        "type": "docx",
+        "description": "Google Doc export"
+      },
+      {
+        "type": "xlsx",
+        "description": "Google Sheet export"
+      },
+      {
+        "type": "out",
+        "description": "Large JSON/NDJSON command output saved instead of returned inline"
+      }
+    ]
+  }
+}

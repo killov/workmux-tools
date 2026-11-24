@@ -51,7 +51,7 @@ const STRICT_CR_FROM_ROUND = 2
 const MAX_CREEP_ROUNDS = 3
 // Cesty bez povrchu v běžícím pluginu: dokumentace a konfigurace agentů. Když se
 // kolo dotklo JEN jich, stavět kontejner a pouštět ukázkovou úlohu je čistá režie.
-// `workmux-tool.json` sem NEPATŘÍ — `instructions`/`description` čte bot za běhu.
+// `workmux-plugin.json` sem NEPATŘÍ — `instructions`/`description` čte bot za běhu.
 // Totéž pravidlo (soubory mimo *.md) používá `plugin-gate.mjs changed` pro
 // `runtimePlugins`, tedy pro to, kde GATE staví image.
 const NO_RUNTIME_SURFACE = [

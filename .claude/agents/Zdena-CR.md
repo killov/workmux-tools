@@ -29,7 +29,7 @@ Začni `git diff` (resp. `git diff <base>`) + `git status --porcelain`, ať vid�
 4. **Obsah místo souboru** — base64/inline obsah v odpovědi místo cesty v `/work` → `zapsat do /work a vrátit cestu`.
 5. **Nepinovaný download** — `curl`/`wget` bez verze v `ARG` a `sha256sum -c`, `latest`, `npm install` místo `npm ci`, chybějící lockfile → `pin + sha256`.
 6. **Kontrakt kontejneru do hloubky** — server na `localhost` místo `0.0.0.0`, root uživatel, chybí `tini`/obsluha SIGTERM, pomalý start (stahování za běhu), session leak (bez idle limitu), `HEALTHCHECK` volá nástroj, který v image není.
-7. **`instructions` / `description` v manifestu** — návod pro bota nesedí s reálnými tooly, chybí krok nahrát vstup / stáhnout výstup přes `tool_download_file`, marketing místo postupu → `bot podle tohohle nepozná co zavolat`.
+7. **`instructions` / `description` v manifestu** — návod pro bota nesedí s reálnými tooly, chybí krok nahrát vstup / stáhnout výstup přes `plugin_download_file`, marketing místo postupu → `bot podle tohohle nepozná co zavolat`.
 8. **README**: chybí řádek v tabulce kořenového `README.md` / stromek ve „Structure", README pluginu nesedí s tooly.
 9. **Existující vzor nepoužitý** (session handling, path guard, převod obrázků z `solidcraft`/`gws`) → `tohle už je v solidcraft/server.mjs`.
 10. **Gratuitous nullable / optional** → `proč optional?`.

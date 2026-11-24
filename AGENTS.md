@@ -1,15 +1,15 @@
 # workmux-tools — conventions for agents
 
-Public repository of WorkMux tools (plugins): Docker images with an MCP server inside. WorkMux builds a folder
+Public repository of WorkMux plugins: Docker images with an MCP server inside. WorkMux builds a folder
 of this repository, starts one container per conversation thread and gives bots its tools as `<slug>__<tool>`.
 The container contract is in [README.md](README.md#the-contract) — read it before touching a plugin.
 
 ## One folder = one plugin
 
-- Each top-level folder is one plugin: `workmux-tool.json` (manifest, `$schema`
-  `https://app.workmux.com/schemas/workmux-tool.v1.json`), `Dockerfile`, the MCP server (`server.mjs` on Node 22 +
-  `@modelcontextprotocol/sdk`), `package.json` + `package-lock.json`, `README.md`. A plugin manifest
-  `workmux-plugin.json` (WOR-757) lives next to it when present.
+- Each top-level folder is one plugin: `workmux-plugin.json` (manifest, `$schema`
+  `https://app.workmux.com/schemas/workmux-plugin.v1.json`), `Dockerfile`, the MCP server (`server.mjs` on Node 22 +
+  `@modelcontextprotocol/sdk`), `package.json` + `package-lock.json`, `README.md`. `workmux-tool.json` is a legacy
+  name the server still reads; new and renamed plugins use `workmux-plugin.json`.
 - The build context is the plugin's folder only; no code shared between folders.
 - `slug` = folder name. Tool names are short `snake_case`; `<slug>__<tool>` has at most 64 characters.
 - Patterns to reuse: [`solidcraft/`](solidcraft/) (wraps a stdio MCP server, confines paths to `/work`, turns inline
@@ -30,10 +30,10 @@ The container contract is in [README.md](README.md#the-contract) — read it bef
 - `WORKDIR /work` owned by a non-root user; the last `USER` is not root.
 - Files in and out are paths in `/work` — never contents or base64; paths outside `/work` are refused.
 - Answers `initialize` / `tools/list` within a minute; exits within a few seconds on SIGTERM (`tini`).
-- Secrets are declared by name only (`"required": false` when the tool starts without them). The repository is
+- Secrets are declared by name only (`"required": false` when the plugin starts without them). The repository is
   public: never commit a secret value, never log or return one.
 - `instructions` in the manifest is the bot's step-by-step guide: upload the input to `/work`, call the tools,
-  hand the result over with `tool_download_file`.
+  hand the result over with `plugin_download_file`.
 
 ## README table
 

@@ -1,15 +1,15 @@
-# SolidCraft CAD — WorkMux tool
+# SolidCraft CAD — WorkMux plugin
 
 [SolidCraft](https://solidcraft.io) is an open-source parametric 3D CAD written in Rust
 ([source](https://github.com/tangency-labs/solidcraft), [MCP guide](https://docs.solidcraft.io/guide/mcp.html)).
-This tool runs its headless design session (`solidcraft-cli mcp --headless`) in a container and exposes it to
+This plugin runs its headless design session (`solidcraft-cli mcp --headless`) in a container and exposes it to
 WorkMux bots as a streamable HTTP MCP server. Bots see the tools as `solidcraft__<tool>`.
 
 ## What a bot can do
 
 Design parts from sketches, extrusions, primitives, holes and fillets, measure them, render PNG previews and export
 STL, STEP, 3MF, OBJ, GLB or IGES — all inside `/work`, the container's working directory. Results are handed to the
-user with `tool_download_file`.
+user with `plugin_download_file`.
 
 Typical session:
 
@@ -18,7 +18,7 @@ Typical session:
 3. `solidcraft__batch {...}` / `solidcraft__execute {"command": "solid.box", "params": {"length": 40, "width": 20, "height": 10}}`.
 4. `solidcraft__measure {}`, `solidcraft__screenshot {"view": "iso"}` → returns `/work/screenshot-<time>.png`.
 5. `solidcraft__save {"path": "/work/bracket.sc"}`, `solidcraft__export {"path": "/work/bracket.stl"}`.
-6. `tool_download_file` for `/work/bracket.stl`.
+6. `plugin_download_file` for `/work/bracket.stl`.
 
 ## How it works
 
@@ -63,8 +63,8 @@ SolidCraft **0.46.2**, pinned in the `Dockerfile` with the SHA-256 of the releas
 ## Run locally
 
 ```sh
-docker build -t workmux-tool-solidcraft solidcraft
-docker run --rm -p 8080:8080 workmux-tool-solidcraft
+docker build -t workmux-plugin-solidcraft solidcraft
+docker run --rm -p 8080:8080 workmux-plugin-solidcraft
 curl http://localhost:8080/healthz
 ```
 

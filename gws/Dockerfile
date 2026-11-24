@@ -1,4 +1,4 @@
-# WorkMux tool: Google Workspace CLI (gws) behind a streamable HTTP MCP endpoint.
+# WorkMux plugin: Google Workspace CLI (gws) behind a streamable HTTP MCP endpoint.
 
 # --- Stage 1: fetch the gws release binary (static musl build) and verify its checksum ---------
 FROM debian:bookworm-slim AS gws

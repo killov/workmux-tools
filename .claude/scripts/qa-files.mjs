@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // QA souborový server — přibalí ho `plugin-qa.mjs prepare` do QA image pluginu a běží
-// vedle MCP serveru. Nahrazuje `tool_upload_file` / `tool_download_file` z WorkMuxu, které
+// vedle MCP serveru. Nahrazuje `plugin_upload_file` / `plugin_download_file` z WorkMuxu, které
 // v session nejsou: QA přes něj nahraje vstup do /work a stáhne výstup toolu.
 //
 //   GET  /ls?path=<rel>    výpis adresáře v /work (JSON)

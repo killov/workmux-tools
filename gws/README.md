@@ -1,11 +1,11 @@
-# Google Workspace (gws) — WorkMux tool
+# Google Workspace (gws) — WorkMux plugin
 
 Google Workspace APIs for WorkMux bots through the [Google Workspace CLI](https://github.com/googleworkspace/cli)
 (`gws`): Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, People, Chat, Forms, Meet, Keep, Classroom, Apps
 Script. Bots see the tools as `gws__<tool>`.
 
 `gws` has no MCP mode — `gws mcp` existed in early releases and was removed in 0.8.0 (changelog: *“Remove `mcp`
-command”*). This tool wraps the CLI in a small MCP server with a few generic tools instead of one tool per API
+command”*). This plugin wraps the CLI in a small MCP server with a few generic tools instead of one tool per API
 method, so the bot's context stays small and every API `gws` knows is reachable.
 
 ## Tools
@@ -36,8 +36,8 @@ Examples of `run` args:
 Everything goes through `/work`. File flags — `--upload`, `--output`, `--output-dir`, `--attach`/`-a`, `--dir`
 and the file of `drive +upload` — must point into `/work`; relative paths resolve against it and paths outside
 (also through symlinks) are refused. `gws` runs with `/work` as its working directory and refuses upload/output
-paths outside it itself, too. The bot brings files in with `tool_upload_file` and hands results over with
-`tool_download_file`.
+paths outside it itself, too. The bot brings files in with `plugin_upload_file` and hands results over with
+`plugin_download_file`.
 
 `gws` reads a `.env` file from its working directory; if `/work/.env` exists, the tools refuse to run and ask to
 rename it, so an uploaded file cannot reconfigure the CLI.
@@ -47,12 +47,12 @@ rename it, so an uploaded file cannot reconfigure the CLI.
 Decided for every call, first match wins:
 
 1. **`x-workmux-oauth-token` HTTP header** on the MCP request — an OAuth access token WorkMux sends from the
-   project's OAuth connection. Passed to `gws` as `GOOGLE_WORKSPACE_CLI_TOKEN` for that call only. The tool acts as
+   project's OAuth connection. Passed to `gws` as `GOOGLE_WORKSPACE_CLI_TOKEN` for that call only. The plugin acts as
    the connected Google user (Gmail, their Drive and Calendar).
 2. **`GOOGLE_WORKSPACE_CLI_TOKEN`** env/secret — an OAuth2 access token (expires after about an hour).
 3. **`GOOGLE_SERVICE_ACCOUNT_JSON`** secret — the service account key JSON. At start it is written to
    `~/.workmux-gws/service-account.json` (mode 600, outside `/work`) and passed as
-   `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE`. The tool acts as the service account itself: it sees only what is shared
+   `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE`. The plugin acts as the service account itself: it sees only what is shared
    with its e-mail and has no Gmail mailbox (gws 0.7.0 removed domain-wide delegation / impersonation).
 4. **`GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE`** — a credentials file already present in the container.
 
@@ -60,7 +60,7 @@ Without any of them `run` answers with an explanation of what to set; `help`, `s
 still work. Tokens and keys are never logged or returned: `gws` gets a minimal environment, and output is scrubbed
 of the token in use, of anything that looks like a Google access token (`ya29.…`) and of PEM private keys.
 
-Both secrets are declared in `workmux-tool.json` with `"required": false`, so the tool builds and starts without
+Both secrets are declared in `workmux-plugin.json` with `"required": false`, so the plugin builds and starts without
 them.
 
 ## Disabled commands
@@ -76,7 +76,7 @@ gws **0.22.5** (latest stable release), static musl binaries for amd64 and arm64
 their SHA-256 from the release's `.sha256` files. To update, change `GWS_VERSION` and both checksums.
 
 Known gws issue: `schema ... --resolve-refs` crashes (SIGSEGV) on recursive schemas such as
-`gmail.users.messages.send`; the tool reports it and suggests calling `schema` without `resolve_refs`.
+`gmail.users.messages.send`; the plugin reports it and suggests calling `schema` without `resolve_refs`.
 
 ## Environment
 
@@ -93,8 +93,8 @@ Known gws issue: `schema ... --resolve-refs` crashes (SIGSEGV) on recursive sche
 ## Run locally
 
 ```sh
-docker build -t workmux-tool-gws gws
-docker run --rm -p 8080:8080 -e GOOGLE_WORKSPACE_CLI_TOKEN="$(gcloud auth print-access-token)" workmux-tool-gws
+docker build -t workmux-plugin-gws gws
+docker run --rm -p 8080:8080 -e GOOGLE_WORKSPACE_CLI_TOKEN="$(gcloud auth print-access-token)" workmux-plugin-gws
 ```
 
 ## License

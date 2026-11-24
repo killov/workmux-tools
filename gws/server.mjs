@@ -1,4 +1,4 @@
-// WorkMux tool: Google Workspace CLI (gws) behind a streamable HTTP MCP endpoint.
+// WorkMux plugin: Google Workspace CLI (gws) behind a streamable HTTP MCP endpoint.
 //
 // gws has no MCP mode (`gws mcp` was removed in 0.8.0), so this server exposes a few generic tools
 // instead of one tool per API method:
@@ -101,7 +101,7 @@ const SOURCE_TEXT = {
 
 const NO_AUTH_TEXT = [
   "No Google credentials are configured for this tool, so gws cannot call Google APIs.",
-  "Ask the project owner to set one of these in WorkMux (Project settings → Tools → Google Workspace):",
+  "Ask the project owner to set one of these in WorkMux (Project settings → Plugins → Google Workspace):",
   `- an OAuth connection whose access token WorkMux passes in the ${TOKEN_HEADER} header (preferred; acts as the connected Google user),`,
   "- the env/secret GOOGLE_WORKSPACE_CLI_TOKEN with an OAuth2 access token (expires after about an hour),",
   "- the secret GOOGLE_SERVICE_ACCOUNT_JSON with a service account key JSON (acts as the service account itself: it sees only files and calendars shared with its e-mail; it cannot read anyone's Gmail).",
@@ -306,7 +306,7 @@ function formatResult(r, { args, auth, timeoutS }) {
     out.stdout_file = r.stdoutFile;
     out.stdout_bytes = r.stdoutBytes;
     out.stdout_preview = scrub(fs.readFileSync(r.stdoutFile, "utf8").slice(0, 2000), secrets);
-    out.note = `The output was larger than ${INLINE_LIMIT} bytes, so it was written to ${r.stdoutFile}. Read parts of it with a narrower request, or download it with tool_download_file.`;
+    out.note = `The output was larger than ${INLINE_LIMIT} bytes, so it was written to ${r.stdoutFile}. Read parts of it with a narrower request, or download it with plugin_download_file.`;
   } else {
     const text = scrub(r.stdout, secrets);
     let parsed;
@@ -323,7 +323,7 @@ function formatResult(r, { args, auth, timeoutS }) {
     const i = args.findIndex((a) => a === flag || a.startsWith(flag + "="));
     if (i >= 0) {
       const p = args[i].includes("=") ? args[i].split("=").slice(1).join("=") : args[i + 1];
-      if (p && fs.existsSync(p)) out.written = { path: p, bytes: fs.statSync(p).isFile() ? fs.statSync(p).size : undefined, hint: "Download it with tool_download_file." };
+      if (p && fs.existsSync(p)) out.written = { path: p, bytes: fs.statSync(p).isFile() ? fs.statSync(p).size : undefined, hint: "Download it with plugin_download_file." };
     }
   }
   if (r.code === 2 && auth) out.auth_hint = `Google rejected ${SOURCE_TEXT[auth.source]}. It may be expired, lack the scope this API needs, or (service account) the resource is not shared with it.`;
@@ -338,7 +338,7 @@ const INSTRUCTIONS = [
   "Google Workspace through the gws CLI (Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, People, Chat, Forms, Meet, Keep, Classroom, Apps Script).",
   "Commands are `gws <service> <resource> [sub-resource] <method> --params '<JSON>' [--json '<JSON body>']`, mirroring the Google REST APIs; helpers start with + (gmail +send, sheets +read, sheets +append, calendar +agenda, drive +upload).",
   "Find a method with help (e.g. [\"drive\"], [\"drive\",\"files\"]) and its parameters with schema (\"drive.files.list\"), then call run with args as an array of strings (no shell, no quoting).",
-  `Files live in ${WORK_DIR}: --upload, --attach, drive +upload take paths there, --output writes there; large output is saved there. Hand files over with tool_download_file; take user files in with tool_upload_file.`,
+  `Files live in ${WORK_DIR}: --upload, --attach, drive +upload take paths there, --output writes there; large output is saved there. Hand files over with plugin_download_file; take user files in with plugin_upload_file.`,
   "Call auth_status to see which Google identity is used. gws auth login/setup/export are disabled; credentials come from WorkMux.",
 ].join("\n");
 

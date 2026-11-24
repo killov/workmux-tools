@@ -109,8 +109,8 @@ launchi**:
   konkrétní kotvou (1–3 soubory) mimo seamy (kontrakt kontejneru, auth, nový plugin) →
   ARCH se přeskočí. V pochybnostech jede `heavy`.
 - **GATE měří z repa, ne z DEVova self-reportu**: `plugin-gate.mjs changed` (git),
-  `validate` (schéma `https://app.workmux.com/schemas/workmux-tool.v1.json`, po WOR-757
-  i `workmux-plugin.json`, + konvence: Dockerfile `HEALTHCHECK`/`WORKDIR /work`/ne-root,
+  `validate` (`workmux-plugin.json` proti `https://app.workmux.com/schemas/workmux-plugin.v1.json`,
+  fallback `workmux-tool.json`, + konvence: Dockerfile `HEALTHCHECK`/`WORKDIR /work`/ne-root,
   README tabulka, sha256 u downloadů), pro pluginy se změnou mimo dokumentaci `docker`
   (build → run → `/healthz` → MCP `initialize` + `tools/list` + 404 na neznámou session
   → SIGTERM). Bez dockeru staví kontejner přes `run_session_container` a pouští `smoke`.

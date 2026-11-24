@@ -1,4 +1,4 @@
-# WorkMux tool: SolidCraft headless CAD (solidcraft-cli mcp) behind a streamable HTTP MCP endpoint.
+# WorkMux plugin: SolidCraft headless CAD (solidcraft-cli mcp) behind a streamable HTTP MCP endpoint.
 
 # --- Stage 1: fetch solidcraft-cli from the pinned GitHub release and verify its checksum ---------
 FROM debian:bookworm-slim AS solidcraft

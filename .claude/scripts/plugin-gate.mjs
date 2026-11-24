@@ -24,10 +24,11 @@ import { fileURLToPath } from "node:url";
 import { mcpClient, resultText } from "./lib/mcp.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+// Pořadí = priorita: `workmux-plugin.json` (WOR-757), `workmux-tool.json` server bere jen jako fallback.
 const SCHEMAS = {
-  "workmux-tool.json": "https://app.workmux.com/schemas/workmux-tool.v1.json",
-  // Manifest pluginu (WOR-757). Dokud schéma neexistuje, validace se jen ohlásí jako přeskočená.
+  // Dokud schéma na produkci neexistuje, validace se jen ohlásí jako přeskočená.
   "workmux-plugin.json": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "workmux-tool.json": "https://app.workmux.com/schemas/workmux-tool.v1.json",
 };
 const MAX_TOOL_NAME = 64;
 const TOOL_NAME_RE = /^[A-Za-z0-9_-]+$/;
@@ -53,9 +54,14 @@ function parseFlags(argv) {
 
 const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8" });
 
-/** Složka pluginu = adresář v kořeni repa s `workmux-tool.json` nebo `workmux-plugin.json`. */
+/** Manifest, který WorkMux čte: `workmux-plugin.json`, jinak fallback `workmux-tool.json`. */
+function manifestFile(dir) {
+  return Object.keys(SCHEMAS).find((f) => fs.existsSync(path.join(ROOT, dir, f)));
+}
+
+/** Složka pluginu = adresář v kořeni repa s `workmux-plugin.json` nebo `workmux-tool.json`. */
 function isPluginDir(dir) {
-  return Object.keys(SCHEMAS).some((f) => fs.existsSync(path.join(ROOT, dir, f)));
+  return Boolean(manifestFile(dir));
 }
 
 function listPluginDirs() {
@@ -163,8 +169,9 @@ async function cmdValidate(dirs) {
     const r = { dir, errors: [], warnings: [], skipped: [] };
     results.push(r);
     const manifests = Object.keys(SCHEMAS).filter((f) => fs.existsSync(path.join(ROOT, dir, f)));
-    if (!manifests.length) r.errors.push(`${dir}: chybí workmux-tool.json i workmux-plugin.json`);
-    let toolManifest = null;
+    if (!manifests.length) r.errors.push(`${dir}: chybí workmux-plugin.json i workmux-tool.json`);
+    if (manifests.length > 1) r.warnings.push(`${dir}: workmux-tool.json je jen fallback vedle workmux-plugin.json, smaž ho`);
+    let primary = null;
     for (const file of manifests) {
       const rel = `${dir}/${file}`;
       let data;
@@ -174,7 +181,7 @@ async function cmdValidate(dirs) {
         r.errors.push(`${rel}: neplatný JSON (${e.message})`);
         continue;
       }
-      if (file === "workmux-tool.json") toolManifest = data;
+      if (file === manifests[0]) primary = data;
       const url = SCHEMAS[file];
       if (data.$schema && data.$schema !== url) r.warnings.push(`${rel}: $schema je ${data.$schema}, čekám ${url}`);
       let validate = schemaCache.get(url);
@@ -191,14 +198,14 @@ async function cmdValidate(dirs) {
         for (const err of validate.errors) r.errors.push(`${rel}: ${err.instancePath || "/"} ${err.message}${err.params?.additionalProperty ? ` (${err.params.additionalProperty})` : ""}`);
       }
     }
-    if (toolManifest) {
-      const c = conventionChecks(dir, toolManifest);
+    if (primary) {
+      const c = conventionChecks(dir, primary);
       r.errors.push(...c.errors);
       r.warnings.push(...c.warnings);
     }
-    // Schéma `workmux-tool.json` je jediná tvrdá podmínka buildu ve WorkMux — když nejde
-    // načíst, je to červená (nejde nic tvrdit), u plugin manifestu jen poznámka.
-    if (toolManifest && r.skipped.some((s) => s.includes("workmux-tool.json"))) r.errors.push(`${dir}: manifest nejde ověřit proti schématu (síť?)`);
+    // Schéma `workmux-tool.json` je ověřené na produkci — když nejde načíst, je to červená
+    // (nejde nic tvrdit). U `workmux-plugin.json` jen poznámka, schéma může zatím vracet 404.
+    if (manifests[0] === "workmux-tool.json" && r.skipped.some((s) => s.includes("workmux-tool.json"))) r.errors.push(`${dir}: manifest nejde ověřit proti schématu (síť?)`);
     if (r.errors.length) ok = false;
     out(`${r.errors.length ? "FAIL" : "ok  "} ${dir}`);
     for (const e of r.errors) out(`  error: ${e}`);
@@ -277,7 +284,7 @@ async function cmdDocker(dir, flags) {
     out(`  node .claude/scripts/plugin-gate.mjs smoke http://gate-${dir}:8080/mcp --slug ${dir}`);
     finish({ cmd: "docker", ok: null, dir, reason: "no-docker" }, 3);
   }
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, dir, "workmux-tool.json"), "utf8"));
+  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, dir, manifestFile(dir)), "utf8"));
   const tag = `workmux-tools-gate/${dir}:latest`;
   const name = `gate-${dir}-${process.pid}`;
   const ctx = path.join(ROOT, dir, manifest.build?.context || ".");

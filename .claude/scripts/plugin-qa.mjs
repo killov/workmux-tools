@@ -47,7 +47,9 @@ function parseFlags(argv) {
 
 function manifestOf(dir) {
   if (!dir) return { mcp: { port: 8080, path: "/mcp" } };
-  return JSON.parse(fs.readFileSync(path.join(ROOT, dir, "workmux-tool.json"), "utf8"));
+  // `workmux-tool.json` server bere jen jako fallback za `workmux-plugin.json` (WOR-757).
+  const file = ["workmux-plugin.json", "workmux-tool.json"].find((f) => fs.existsSync(path.join(ROOT, dir, f)));
+  return JSON.parse(fs.readFileSync(path.join(ROOT, dir, file), "utf8"));
 }
 
 /** ENTRYPOINT + CMD posledního stage (exec tvar), ať QA image pustí server stejně jako produkce. */
