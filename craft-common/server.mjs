@@ -1,10 +1,11 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
-// `fileKeys`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft plugin. Every MCP session gets its
-// own headless `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as
-// its automation read and write root when the engine has them (`engineRoots`). This server forwards tools and
-// resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux plugin contract on top:
+// `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft plugin. Every MCP
+// session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP over stdio in
+// WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This server
+// forwards tools and resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux plugin
+// contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
 //   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
 //     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned,
@@ -64,6 +65,10 @@ const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
 // they are: a relative value can be something else there, e.g. a VectorCraft path object id. Any other string,
 // under any key and at any depth, is checked too when it looks like a path (absolute or going up with ..).
 const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "output", "dir", "directory", "folder"]);
+// `nonFileArgs` in craft.json names top-level keys of one app's tools that are not files despite their name
+// (EffectCraft set_property.path is a property path like transform/opacity); they are only checked like any string.
+const NON_FILE_ARGS = new Map(Object.entries(CRAFT.nonFileArgs ?? {}).map(([tool, keys]) => [tool, new Set(keys)]));
+const isNonFileArg = (tool, key) => NON_FILE_ARGS.get(tool)?.has(key) ?? false;
 // An engine without --automation-read-root/--automation-write-root (FilmCraft) reads and writes wherever it is
 // told, so this server is the only fence: a few more keys name files in its commands
 // (file.projectManager.destination, the scratch disks, template paths, media.autoRelink from/to), and lists of files
@@ -194,7 +199,8 @@ function prepareArgs(tool, args) {
   const out = {};
   for (const [key, value] of Object.entries(args || {})) {
     const where = `${tool}.${key}`;
-    out[key] = typeof value === "string" && FILE_KEYS.has(key) ? resolveInWork(value, where) : prepareNested(key, value, where);
+    if (isNonFileArg(tool, key)) out[key] = prepareNested(null, value, where);
+    else out[key] = typeof value === "string" && FILE_KEYS.has(key) ? resolveInWork(value, where) : prepareNested(key, value, where);
   }
   return out;
 }
@@ -281,7 +287,7 @@ function adaptTools(tools) {
     const tool = structuredClone(t);
     for (const [key, prop] of Object.entries(tool.inputSchema?.properties || {})) {
       // A key of the same name can hold something else, e.g. VectorCraft add_text.path is a path object id.
-      if (FILE_KEYS.has(key) && [prop.type].flat().includes("string")) prop.description = `${prop.description || "File path"} (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})`;
+      if (FILE_KEYS.has(key) && !isNonFileArg(tool.name, key) && [prop.type].flat().includes("string")) prop.description = `${prop.description || "File path"} (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})`;
     }
     if (IMAGE_TOOLS.has(tool.name)) {
       tool.description = `${tool.description} The PNG is saved into ${WORK_DIR} and its path returned instead of an inline image.`;
