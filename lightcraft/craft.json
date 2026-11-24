@@ -1,0 +1,15 @@
+{
+  "app": "lightcraft",
+  "name": "LightCraft",
+  "repo": "storytold/lightcraft",
+  "version": "0.21.1",
+  "sha256": {
+    "x86_64": "c91ef47bec44995d99ce58e6c748af9fa6ab1ff1c11de9e290e0b8231176dad1",
+    "aarch64": "815f9b7ea3fc96b2dc9cac5934f299ceab349b8ba95d7daf9c40543ae1e8437c"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_", "^cmd_", "^list_commands$", "^run_command$"],
+  "callTimeoutMs": 600000,
+  "engineRoots": false,
+  "fileKeys": ["into", "parent", "previewPath", "dataset", "image", "listing"]
+}

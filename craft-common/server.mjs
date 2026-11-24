@@ -1,7 +1,7 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`,
-// `engineRoots`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
+// `engineRoots`, `fileKeys`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
 // `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as its
 // automation read and write root when the engine has them (`engineRoots`). This server forwards tools and resources
 // to it and enforces the WorkMux plugin contract on top:
@@ -67,14 +67,17 @@ const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "outp
 // disks, template paths, media.autoRelink from/to), and lists of files (media_import.paths, file.import.paths)
 // become absolute paths in WORK_DIR, as the engine wants them.
 const ENGINE_ROOTS = CRAFT.engineRoots ?? true;
-const NESTED_FILE_KEYS = ENGINE_ROOTS
-  ? FILE_KEYS
-  : new Set([...FILE_KEYS, "destination", "template", "captured", "videoPreviews", "audioPreviews", "autoSave", "from", "to"]);
+// `fileKeys` in craft.json names further file keys of one app's commands (LightCraft folder.move.into, …).
+const NESTED_FILE_KEYS = new Set([
+  ...FILE_KEYS,
+  ...(ENGINE_ROOTS ? [] : ["destination", "template", "captured", "videoPreviews", "audioPreviews", "autoSave", "from", "to"]),
+  ...(CRAFT.fileKeys ?? []),
+]);
 const FILE_LIST_KEYS = new Set(["paths", "files"]);
 // JSON keys of file bytes in the child's answers.
 const BASE64_KEYS = new Set(["dataBase64", "pngBase64"]);
 // Tools that answer with an inline image.
-const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "screenshot"]);
+const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
 
 const WORKMUX_NOTE = [
   `WorkMux: this ${APP_NAME} server runs headless in a container. Files live in /work only:`,
@@ -125,7 +128,9 @@ function prepareNested(key, value, where) {
   }
   if (Array.isArray(value)) {
     const files = !ENGINE_ROOTS && FILE_LIST_KEYS.has(key);
-    return value.map((v, i) => (files && typeof v === "string" ? resolveInWork(v, `${where}[${i}]`) : prepareNested(null, v, `${where}[${i}]`)));
+    // A list under a file key holds files too, e.g. LightCraft library.autoImportScan.listing: [[path, size]].
+    const itemKey = NESTED_FILE_KEYS.has(key) ? key : null;
+    return value.map((v, i) => (files && typeof v === "string" ? resolveInWork(v, `${where}[${i}]`) : prepareNested(itemKey, v, `${where}[${i}]`)));
   }
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, prepareNested(k, v, `${where}.${k}`)]));

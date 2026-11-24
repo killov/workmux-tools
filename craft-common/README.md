@@ -60,11 +60,13 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `hideTools` | regular expressions of tools not offered to bots (the bridge-only ones need the desktop app) |
 | `callTimeoutMs` | default limit of one tool call (`CRAFT_CALL_TIMEOUT_MS` overrides it) |
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
+| `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 
 With `"engineRoots": false` the child runs as plain `<app>-cli mcp` in `/work` and the bridge is the only fence
 around `/work`: file keys inside `command_run` params and `command_batch` steps are checked also when relative,
 `destination`, `template`, the scratch disk keys and `from`/`to` count as file keys there, and string lists under
-`paths`/`files` (top level and nested) are refused outside `/work` and rewritten to absolute paths.
+`paths`/`files` (top level and nested) are refused outside `/work` and rewritten to absolute paths. Strings in a list
+under a file key (also nested lists, e.g. `listing: [[path, size]]`) are checked like the key's own value.
 
 ## New Craft plugin
 

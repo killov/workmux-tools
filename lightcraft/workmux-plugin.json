@@ -1,0 +1,45 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "lightcraft",
+  "name": "LightCraft",
+  "description": "Headless photo library and raw developer (LightCraft from ArtCraft, open source, written in Rust; a Lightroom alternative). Imports camera raws (DNG, Canon CR2/CR3, Nikon NEF, Sony ARW, Fujifilm RAF, Olympus ORF, Panasonic RW2, Pentax PEF), JPEG, TIFF, PNG and WebP, develops them non-destructively — exposure, white balance, tone, curves, color, detail, lens corrections, crop, presets and masks through 390 commands — renders previews and exports full-resolution JPEG, TIFF and PNG.",
+  "instructions": "LightCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the photo to /work and import it: import {\"paths\":[\"/work/IMG_0001.dng\"]} returns its photo id (e.g. {\"imported\":[1]}); the last imported photo is the active one, the develop tools act on it (or pass \"id\").\n2. Read the sliders and their current values: list_controls {\"section\":\"light\"} (also \"color\", \"effects\", \"detail\"…). Exposure is light.exposure in EV (-5..5); white balance is wb.temp in Kelvin (the as-shot value of the raw, 2000..50000) and wb.tint.\n3. Develop: set_develop {\"values\":{\"light.exposure\":0.5}}. Warmer white balance = a higher wb.temp than the current value, e.g. +800 K: set_develop {\"values\":{\"wb.temp\":5350}}; cooler = lower. Presets: command_run {\"id\":\"develop.wb\",\"params\":{\"mode\":\"daylight\"}} (also cloudy, shade, tungsten, fluorescent, flash, auto, asShot). Crop: crop {\"rect\":[x0,y0,x1,y1]} in 0..1 of the photo, optionally \"angle\". Everything else is an engine command: command_list {\"filter\":\"develop\"} (also \"mask\", \"preset\", \"lens\", \"curve\"…) — always pass a filter, the registry has about 390 commands — then command_run {\"id\":...,\"params\":{...}}, or command_batch {\"steps\":[...]} for several. get_develop shows all settings of the photo.\n4. Check the result: render_preview {} saves a PNG of the developed photo into /work and returns its path (no inline image) — download it to look at it or to show it.\n5. Export: export {\"path\":\"/work/IMG_0001.jpg\",\"quality\":90,\"longEdge\":0}. Always pass \"longEdge\":0 for the full resolution — without a size the engine shrinks the long edge to 3000 px; for a smaller file pass \"longEdge\":2048 (or \"width\", \"height\", \"percent\"). The format follows the extension: .jpg, .tif (16-bit by default, \"bitDepth\":8 for 8-bit) or .png. Use a new file name for every export.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. The library lives in memory only: a new MCP session (e.g. after a reconnect) starts with an empty library. To keep the edits, command_run {\"id\":\"photo.saveMetadataToFile\"} writes an XMP sidecar next to each original in /work; importing the photo again later reads it back. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 4096,
+    "cpus": 4
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "dng", "description": "DNG raw photo" },
+      { "type": "cr2", "description": "Canon raw photo" },
+      { "type": "cr3", "description": "Canon raw photo" },
+      { "type": "nef", "description": "Nikon raw photo" },
+      { "type": "arw", "description": "Sony raw photo" },
+      { "type": "raf", "description": "Fujifilm raw photo (incl. X-Trans)" },
+      { "type": "orf", "description": "Olympus / OM System raw photo" },
+      { "type": "rw2", "description": "Panasonic raw photo" },
+      { "type": "pef", "description": "Pentax raw photo" },
+      { "type": "jpg", "description": "JPEG photo to develop" },
+      { "type": "tiff", "description": "TIFF photo (.tif/.tiff) to develop" },
+      { "type": "png", "description": "PNG image to develop" },
+      { "type": "webp", "description": "WebP image to develop" },
+      { "type": "xmp", "description": "XMP sidecar with develop settings saved earlier, next to its photo" }
+    ],
+    "returns": [
+      { "type": "jpg", "description": "Developed photo as JPEG" },
+      { "type": "tiff", "description": "Developed photo as 8- or 16-bit TIFF" },
+      { "type": "png", "description": "Developed photo as PNG, or a render_preview PNG" },
+      { "type": "xmp", "description": "XMP sidecar with the develop settings, to continue editing later" }
+    ]
+  }
+}
