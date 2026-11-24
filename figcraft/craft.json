@@ -1,0 +1,14 @@
+{
+  "app": "figcraft",
+  "name": "FigCraft",
+  "repo": "storytold/figcraft",
+  "version": "0.18.1",
+  "sha256": {
+    "x86_64": "ed9abee9a02cf8ce1feb1a1de10e5c04148c4d1f7b9128080d7fe6cdb1f0efb4",
+    "aarch64": "63b3366e30f2a3bf514ee8fd182fb14140ca25ad490c52c28bdd63f3bf419338"
+  },
+  "aptPackages": [],
+  "hideTools": ["^inspect_ui$", "^wait_for_changes$", "^pointer$", "^key$", "^type_text$"],
+  "callTimeoutMs": 300000,
+  "base64Keys": ["data"]
+}

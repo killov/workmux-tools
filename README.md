@@ -22,6 +22,7 @@ workmux-tools/
 ├── filmcraft/               FilmCraft — video editor (ArtCraft), built from craft-common/
 ├── lightcraft/              LightCraft — photo library and raw developer (ArtCraft), built from craft-common/
 ├── pdfcraft/                PdfCraft — PDF workbench (ArtCraft), built from craft-common/
+├── figcraft/                FigCraft — interface design and prototyping (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -35,6 +36,7 @@ workmux-tools/
 | [`filmcraft`](filmcraft/) | [FilmCraft](https://getartcraft.com/apps/filmcraft) video editor (ArtCraft): import MP4/MOV/WebM, audio and stills, cut, titles, color, mix, export MP4/MOV/GIF |
 | [`lightcraft`](lightcraft/) | [LightCraft](https://getartcraft.com/apps/lightcraft) photo library and raw developer (ArtCraft): import RAW (DNG/CR3/NEF/ARW…), JPEG and TIFF, exposure, white balance, tone, crop, presets, export JPEG/TIFF/PNG |
 | [`pdfcraft`](pdfcraft/) | [PdfCraft](https://getartcraft.com/apps/pdfcraft) PDF workbench (ArtCraft): open, merge PDFs and images, split, reorder and rotate pages, password-protect, redact, watermark, fill forms, export PDF/PNG/text/Word |
+| [`figcraft`](figcraft/) | [FigCraft](https://getartcraft.com/apps/figcraft) interface design (ArtCraft): open .fig/.sketch/SVG/images, frames, auto layout, text, components, styles, prototyping, export PNG/SVG/PDF |
 
 ## Add a plugin to WorkMux
 

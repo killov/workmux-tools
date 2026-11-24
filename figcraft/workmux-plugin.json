@@ -1,0 +1,41 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "figcraft",
+  "name": "FigCraft",
+  "description": "Headless interface design tool (FigCraft from ArtCraft, open source, written in Rust). Designs app and web screens with frames, auto layout, shapes, text, components, styles, variables and prototype links; opens FigCraft projects, .fig and .sketch files (best effort), SVG and images; exports PNG, JPEG, WebP, SVG and PDF and saves .figcraft projects.",
+  "instructions": "FigCraft runs headless in your own container; every file lives in /work.\n\n1. Start a new design right away, or upload the user's file to /work and open it: open_file {\"path\":\"/work/design.fig\"} reads .figcraft, FigCraft/REST API .json, .fig and .sketch (best effort: tell the user about the `warnings` it returns), .svg (becomes vectors) and images (become an image layer).\n2. Build with create_node: a frame is a screen, e.g. create_node {\"type\":\"frame\",\"name\":\"Login\",\"width\":390,\"height\":844,\"props\":{\"fill\":\"#FFFFFF\",\"layout\":\"vertical\",\"gap\":16,\"padding\":24}} returns its id. Put layers inside it with \"parent\": text {\"type\":\"text\",\"parent\":2,\"text\":\"Sign in\",\"props\":{\"fontSize\":28}}, inputs and buttons as rectangles with {\"cornerRadius\":8} and a fill. Change layers with set_properties {\"ids\":[3],\"props\":{\"characters\":\"Log in\",\"fill\":\"#3366FF\"}}.\n3. Everything else (align, components and instances, styles, variables, prototype links, boolean operations…) is an engine command: list_commands {\"filter\":\"component\"} — always pass a filter, never list all — then run_command {\"command\":...,\"params\":{...}}, or batch for several commands as one undo step. Undo with undo.\n4. Check the result: inspect_document shows the layer tree; screenshot {\"ids\":[2]} saves a PNG into /work and returns its path (no inline image) — download it to look at it.\n5. Export always with a path in /work: export {\"ids\":[2],\"path\":\"/work/login.png\",\"scale\":2}; the same with .svg, .pdf, .jpg or .webp. Save the project with save_file {\"path\":\"/work/<name>.figcraft\"}; use new file names, never overwrite the user's input.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. A new MCP session (e.g. after a reconnect) starts with no open document, so save the .figcraft project after each stage and reopen it then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "figcraft", "description": "FigCraft project to edit or export" },
+      { "type": "fig", "description": "Figma file to import (best effort, with warnings)" },
+      { "type": "sketch", "description": "Sketch file to import (Sketch 48 or newer, best effort)" },
+      { "type": "json", "description": "FigCraft document or REST API file JSON" },
+      { "type": "svg", "description": "SVG to import as vectors" },
+      { "type": "png", "description": "PNG image to place as an image layer" },
+      { "type": "jpg", "description": "JPEG image to place as an image layer" }
+    ],
+    "returns": [
+      { "type": "png", "description": "Exported screen or layer, or a screenshot" },
+      { "type": "svg", "description": "Exported vector screen or layer" },
+      { "type": "pdf", "description": "Exported screens as PDF" },
+      { "type": "jpg", "description": "Exported screen or layer as JPEG" },
+      { "type": "webp", "description": "Exported screen or layer as WebP" },
+      { "type": "figcraft", "description": "Saved FigCraft project" },
+      { "type": "fig", "description": "Experimental .fig export" }
+    ]
+  }
+}

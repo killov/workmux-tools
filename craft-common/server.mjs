@@ -1,7 +1,7 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
-// The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`,
-// `engineRoots`, `fileKeys`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
+// The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
+// `fileKeys`, `base64Keys`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
 // `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as its
 // automation read and write root when the engine has them (`engineRoots`). This server forwards tools and resources
 // to it and enforces the WorkMux plugin contract on top:
@@ -75,13 +75,15 @@ const NESTED_FILE_KEYS = new Set([
   ...(CRAFT.fileKeys ?? []),
 ]);
 const FILE_LIST_KEYS = new Set(["paths", "files"]);
-// JSON keys of file bytes in the child's answers.
-const BASE64_KEYS = new Set(["dataBase64", "pngBase64"]);
+// JSON keys of file bytes in the child's answers; `base64Keys` in craft.json adds keys of one app (FigCraft's export
+// answers {"format": ..., "data": ...}), a key as generic as `data` is not base64 in every app.
+const APP_BASE64_KEYS = new Set(CRAFT.base64Keys ?? []);
+const BASE64_KEYS = new Set(["dataBase64", "pngBase64", ...APP_BASE64_KEYS]);
 // File extension of an inline export by its `format` (the export formats of the Craft apps); others are refused.
 const EXT_BY_FORMAT = new Map(Object.entries({
   png: "png", png8: "png", jpg: "jpg", jpeg: "jpg", webp: "webp", gif: "gif", bmp: "bmp", tga: "tga", exr: "exr",
   tif: "tif", tiff: "tif", psd: "psd", psb: "psb", ora: "ora", svg: "svg", svgz: "svgz", pdf: "pdf", eps: "eps",
-  ai: "ai", dxf: "dxf",
+  ai: "ai", dxf: "dxf", fig: "fig",
 }));
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
@@ -210,7 +212,8 @@ function externalizeJsonData(tool, text) {
     if (!node || typeof node !== "object") return node;
     const out = {};
     for (const [key, v] of Object.entries(node)) {
-      if (BASE64_KEYS.has(key) && typeof v === "string") {
+      // An app's own base64 key (e.g. `data`) only counts as file bytes next to a `format`; elsewhere it is plain data.
+      if (BASE64_KEYS.has(key) && typeof v === "string" && !(APP_BASE64_KEYS.has(key) && typeof node.format !== "string")) {
         const format = key === "pngBase64" ? "png" : node.format;
         const ext = typeof format === "string" && EXT_BY_FORMAT.get(format.toLowerCase());
         if (!ext) {

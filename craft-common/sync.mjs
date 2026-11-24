@@ -36,6 +36,7 @@ function loadCraft(dir) {
   if (!Number.isInteger(craft.callTimeoutMs) || craft.callTimeoutMs <= 0) problems.push("callTimeoutMs must be a positive integer");
   if ("engineRoots" in craft && typeof craft.engineRoots !== "boolean") problems.push("engineRoots must be true or false");
   if ("fileKeys" in craft && !(Array.isArray(craft.fileKeys) && craft.fileKeys.every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push("fileKeys must be a list of argument key names");
+  if ("base64Keys" in craft && !(Array.isArray(craft.base64Keys) && craft.base64Keys.every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push("base64Keys must be a list of JSON key names");
   if (problems.length) throw new Error(`${dir}/craft.json: ${problems.join("; ")}`);
   return craft;
 }
