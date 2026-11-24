@@ -43,7 +43,7 @@ async function startBridge({ engineRoots = true, encodeMp3 = false, env = {} } =
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3, base64Formats: { png: "png" } }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3, base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -170,6 +170,25 @@ for (const engineRoots of [true, false]) {
       const r = await sess.call("echo", args);
       assert.equal(r.isError, undefined, r.text);
       assert.deepEqual(JSON.parse(r.text), args);
+    });
+
+    test("a nonFileArgs key passes unchanged, only in its tool, and is still checked", async () => {
+      const prop = await sess.call("set_property", { path: "transform/opacity" });
+      assert.equal(prop.isError, undefined, prop.text);
+      assert.deepEqual(JSON.parse(prop.text), { path: "transform/opacity" });
+      const file = await sess.call("echo", { path: "transform/opacity" });
+      assert.deepEqual(JSON.parse(file.text), { path: path.join(bridge.work, "transform/opacity") });
+      for (const p of ["/etc/x", "../x"]) {
+        const r = await sess.call("set_property", { path: p });
+        assert.equal(r.isError, true);
+        assert.match(r.text, /set_property\.path \(looks like a path\) .*outside/);
+      }
+    });
+
+    test("a nonFileArgs key is not described as a file path", async () => {
+      const r = await post(bridge, { jsonrpc: "2.0", id: 99, method: "tools/list" }, { sessionId: sess.id });
+      const { description } = r.json.result.tools.find((t) => t.name === "set_property").inputSchema.properties.path;
+      assert.equal(description, "Property path");
     });
   });
 }

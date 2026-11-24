@@ -23,12 +23,14 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
     { name: "export_bad", description: "Answers inline file data that is not JSON.", inputSchema: anyArgs },
     { name: "export_fmt", description: "Answers {format, dataBase64}.", inputSchema: anyArgs },
     { name: "export_png", description: "Answers {png, width} like DeckCraft's file.render.", inputSchema: anyArgs },
+    { name: "set_property", description: "Answers its arguments as JSON; path is a property path.", inputSchema: { type: "object", properties: { path: { type: "string", description: "Property path" } } } },
   ],
 }));
 server.setRequestHandler(CallToolRequestSchema, (req) => {
   const args = req.params.arguments || {};
   const text = {
     echo: () => JSON.stringify(args),
+    set_property: () => JSON.stringify(args),
     export_bad: () => '{"format":"png","dataBase64":"aGVsbG8gd29ybGQ=',
     export_fmt: () => JSON.stringify({ format: args.format, dataBase64: "aGk=" }),
     export_png: () => JSON.stringify({ png: "iVBORw0KGgpoaQ==", width: 2 }),

@@ -28,6 +28,7 @@ workmux-tools/
 ├── deckcraft/               DeckCraft — presentations (ArtCraft), built from craft-common/
 ├── gridcraft/               GridCraft — spreadsheets and data analysis (ArtCraft), built from craft-common/
 ├── cadcraft/                CADCraft — 2D CAD drafting (ArtCraft), built from craft-common/
+├── effectcraft/             EffectCraft — motion graphics and VFX (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -47,6 +48,7 @@ workmux-tools/
 | [`deckcraft`](deckcraft/) | [DeckCraft](https://getartcraft.com/apps/deckcraft) presentations (ArtCraft): open PPTX, slides with layouts, text, shapes, pictures, tables, charts, themes, transitions, export PPTX/PDF/PNG |
 | [`gridcraft`](gridcraft/) | [GridCraft](https://getartcraft.com/apps/gridcraft) spreadsheets (ArtCraft): open XLSX/ODS/CSV, formulas, tables, sort/filter, pivot tables and charts, export XLSX/CSV/PDF |
 | [`cadcraft`](cadcraft/) | [CADCraft](https://getartcraft.com/apps/cadcraft) 2D CAD drafting (ArtCraft): open DXF/DWG, AutoCAD-style commands and scripts, dimensions, layers, blocks, export DXF/DWG/PDF/SVG |
+| [`effectcraft`](effectcraft/) | [EffectCraft](https://getartcraft.com/apps/effectcraft) motion graphics and VFX (ArtCraft): compositions, text/shape/solid layers, keyframes and expressions, effects, import video/images/AEP/Lottie, render MP4/MOV/WebM/GIF/PNG sequence |
 
 ## Add a plugin to WorkMux
 

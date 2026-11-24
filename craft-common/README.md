@@ -61,6 +61,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `callTimeoutMs` | default limit of one tool call (`CRAFT_CALL_TIMEOUT_MS` overrides it) |
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
+| `nonFileArgs` | optional; tool name → top-level argument keys of that tool that look like file keys but are not files (EffectCraft `set_property` `path` is a property path like `transform/opacity`: `{"set_property": ["path"]}`); they are passed on unchanged and checked like any other string (see below) |
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
 | `encodeMp3` | optional, default `false`; `true` adds the bridge's own `encode_mp3` tool for an engine that bounces audio but cannot write MP3 (SoundCraft) — see below; put `lame` into `aptPackages` |
 | `base64Formats` | optional; JSON keys of file bytes in every answer of the app, also without a `format` next to them, mapped to the format of those bytes (DeckCraft `file.render` answers `{"png": ...}`, `file.saveBytes` `{"data": ...}`: `{"png": "png", "data": "deckcraft"}`); a `format` in the answer wins, bytes that do not match the mapped format are refused (see below) |
@@ -71,6 +72,9 @@ The bridge checks every tool argument before the child sees it; a value outside 
 fails the call with an error that names the argument:
 
 - top-level file keys (`path`, `file`, `dir`, `out`, …) are resolved against `/work` and passed on as absolute paths,
+  except the keys `nonFileArgs` names for a tool: they are not files there (EffectCraft `add_keyframe.path` is a
+  property path), so they are passed on unchanged and refused only when they look like a path outside `/work`; their
+  schema description does not get the "inside `/work`" note either,
 - the same keys inside `command_run` params and `command_batch` steps are checked also when relative but passed on
   unchanged (a relative `path` there can be an object id, e.g. VectorCraft's `path-3`, which resolves inside),
 - any other string, under any key and at any depth, is checked when it looks like a path: absolute, `..`, or

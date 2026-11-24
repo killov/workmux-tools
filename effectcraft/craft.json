@@ -1,0 +1,14 @@
+{
+  "app": "effectcraft",
+  "name": "EffectCraft",
+  "repo": "storytold/effectcraft",
+  "version": "0.25.1",
+  "sha256": {
+    "x86_64": "78a52997f898fee7cd81e50d5768348b023b6b267d6946497d90e57cd9b62ebe",
+    "aarch64": "b00f252832557db9d217dd5fb7a664b52482483786a35ab7d6cbf68ac8c72e53"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_", "^screenshot$", "^run_script$", "^script_ui$", "^list_commands$", "^execute_command$"],
+  "callTimeoutMs": 900000,
+  "nonFileArgs": { "get_property": ["path"], "set_property": ["path"], "add_keyframe": ["path"] }
+}

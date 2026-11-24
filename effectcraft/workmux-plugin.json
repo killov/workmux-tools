@@ -1,0 +1,43 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "effectcraft",
+  "name": "EffectCraft",
+  "description": "Headless motion graphics and VFX compositor in the style of After Effects (EffectCraft from ArtCraft, open source, written in Rust). Builds compositions with text, shape and solid layers, animates them with keyframes and expressions, 2.5D/3D layers, masks and track mattes, applies effects (blur, glow, color correction…), imports video, images, After Effects projects (AEP) and Lottie, runs any of its engine commands, renders PNG frames and exports H.264 MP4, ProRes MOV, WebM, GIF, PNG sequences and Lottie.",
+  "instructions": "EffectCraft runs headless in your own container; every file lives in /work.\n\n1. Inputs (optional): upload clips, images or a project to /work, then import them: command_run {\"id\":\"file.import\",\"params\":{\"paths\":[\"/work/clip.mp4\"]}} returns their item ids; an EffectCraft project: open_project {\"path\":\"/work/x.ecproj\"}; After Effects: command_run {\"id\":\"file.importAep\",\"params\":{\"path\":\"/work/x.aep\"}}; Lottie: command_run {\"id\":\"file.importLottie\",\"params\":{\"path\":\"/work/x.json\"}}.\n2. Create a composition: command_run {\"id\":\"comp.new\",\"params\":{\"name\":\"Title\",\"width\":1920,\"height\":1080,\"frameRate\":30,\"duration\":5}} (duration in seconds).\n3. Add layers: command_run {\"id\":\"layer.newText\",\"params\":{\"text\":\"Hello\",\"size\":120,\"fill\":\"#ffffff\"}} or layer.newSolid {\"color\":\"#3366ff\"}; each returns {\"layer\":id}. get_comp lists the layers, get_layer a layer's properties with their paths.\n4. Animate: add_keyframe {\"layer\":2,\"path\":\"transform/opacity\",\"keys\":[{\"time\":0,\"value\":0},{\"time\":1.5,\"value\":100}]} — here path is a property path from get_layer (transform/position, transform/scale, effects/#1/blurriness…), not a file. set_property {\"layer\":2,\"path\":\"transform/scale\",\"value\":[120,120]} sets a static value or an expression. Effects: add_effect {\"layer\":2,\"effect\":\"Gaussian Blur\",\"values\":{\"blurriness\":5}} (list_effects {\"filter\":...} lists them). Everything else is an engine command: command_list {\"filter\":\"mask\"} (also \"layer\", \"shape\", \"text\", \"precomp\", \"track\"…) — always pass a filter — then command_run {\"id\":...,\"params\":{...}}, command_batch {\"steps\":[...]}, or batch for one undo step.\n5. Check the result: render_preview {\"time\":2} saves a PNG of that frame into /work and returns its path (no inline image); render_preview {\"times\":[0,1,2,3,4]} gives one contact sheet to check motion. Download it to look at it or to show it.\n6. Export: command_run {\"id\":\"renderQueue.add\",\"params\":{\"comp\":\"Title\",\"format\":\"h264\",\"output\":\"/work/out.mp4\"}}, then command_run {\"id\":\"renderQueue.render\",\"params\":{\"wait\":true}}; it returns when the files are written, with failed and last_output. Other formats: \"prores\" (.mov), \"webm\", \"gif\", \"png\" with an output template like \"/work/seq/title_[####].png\" (one PNG per frame: title_0000.png, title_0001.png…). Paths inside params must be absolute (/work/...). Use a new file name for every export.\n7. To continue later: save_project {\"path\":\"/work/<name>.ecproj\"} and open_project it in a later session.\n8. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work. A new MCP session (e.g. after a reconnect) starts with an empty project, so save .ecproj files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 4096,
+    "cpus": 4
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "mp4", "description": "Video clip to composite or key" },
+      { "type": "mov", "description": "QuickTime video clip (H.264, ProRes…)" },
+      { "type": "webm", "description": "WebM video clip" },
+      { "type": "png", "description": "Image, logo or frame of an image sequence" },
+      { "type": "jpg", "description": "Image or background plate" },
+      { "type": "gif", "description": "Still or animated GIF" },
+      { "type": "wav", "description": "Audio track for the composition" },
+      { "type": "ecproj", "description": "EffectCraft project saved earlier" },
+      { "type": "aep", "description": "Adobe After Effects project to import" },
+      { "type": "json", "description": "Lottie animation to import" }
+    ],
+    "returns": [
+      { "type": "mp4", "description": "Rendered composition as H.264 MP4" },
+      { "type": "mov", "description": "Rendered composition as ProRes MOV" },
+      { "type": "webm", "description": "Rendered composition as WebM" },
+      { "type": "gif", "description": "Animated GIF of the composition" },
+      { "type": "png", "description": "render_preview frame or one frame of an exported PNG sequence" },
+      { "type": "ecproj", "description": "EffectCraft project to continue later" }
+    ]
+  }
+}
