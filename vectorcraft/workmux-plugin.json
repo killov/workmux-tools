@@ -1,0 +1,43 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "vectorcraft",
+  "name": "VectorCraft",
+  "description": "Headless vector illustration app (VectorCraft from ArtCraft, open source, written in Rust). Opens SVG, PDF, Illustrator (.ai), EPS, DXF and .vectorcraft documents or starts a blank artboard, draws shapes, Bézier paths and type, sets fills, strokes and gradients, applies live effects (drop shadow, glow, blur…), Pathfinder and transforms, runs any menu command of the desktop app, renders PNG previews and exports SVG, PDF, PNG, JPEG, EPS, AI and more.",
+  "instructions": "VectorCraft runs headless in your own container; every file lives in /work.\n\n1. Start a document. To edit the user's drawing, upload it to /work and open it: open_file {\"path\":\"/work/in.svg\"} (SVG/SVGZ, PDF, AI, EPS, DXF, .vectorcraft; a PNG/JPEG opens as an image to trace or draw over). For a new drawing: command_run {\"id\":\"file.new\",\"params\":{\"width\":512,\"height\":512}} (size in points; without it the session has a blank 612×792 document).\n2. Draw. Coordinates are points, y goes down, the origin is the artboard's top-left corner. draw_shape {\"shape\":\"ellipse\",\"x\":96,\"y\":96,\"width\":320,\"height\":320,\"fill\":\"#6f4e37\",\"stroke\":\"none\"} (also rectangle with radius, polygon, star, line), draw_path {\"d\":\"M236 180 C226 160 246 150 236 130\",\"stroke\":\"#ffffff\",\"strokeWidth\":6,\"fill\":\"none\"} (SVG path data or points), add_text {\"text\":\"CAFE\",\"x\":256,\"y\":400,\"justify\":\"center\",\"size\":48,\"color\":\"#ffffff\"} (font optional). New objects become the selection; set_paint, transform, pathfinder {\"operation\":\"unite\"} and apply_effect act on the selection or on explicit ids (apply_effect {} lists the effects). Undo with undo.\n3. Everything else is a menu command: command_list {\"filter\":\"align\"} (also \"group\", \"gradient\", \"outline\", \"trace\"…) — always pass a filter, the registry has hundreds of commands — then command_run {\"id\":...,\"params\":{...}}, or command_batch {\"steps\":[...]} for several.\n4. Check the result: doc_inspect shows artboards, objects and their ids; render_preview {} saves a PNG preview into /work and returns its path (no inline image) — download it to look at it or to show it.\n5. Export: export {\"path\":\"/work/logo.svg\"}, export {\"path\":\"/work/logo.png\",\"scale\":2} (scale = pixels per point), export {\"path\":\"/work/logo.pdf\"}; the extension picks the format (svg, svgz, pdf, png, jpg, webp, eps, ai, dxf, tiff…). For an SVG that shows the same without the fonts add \"outlineText\":true. Use a new file name for every export. To continue editing later: save_file {\"path\":\"/work/<name>.vectorcraft\"}.\n6. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. A new MCP session (e.g. after a reconnect) starts with no open document, so save .vectorcraft files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "svg", "description": "SVG drawing to edit" },
+      { "type": "svgz", "description": "Compressed SVG drawing" },
+      { "type": "pdf", "description": "PDF with vector art, one artboard per page" },
+      { "type": "ai", "description": "Adobe Illustrator document (PDF-compatible .ai)" },
+      { "type": "eps", "description": "EPS vector file; when its PostScript can't be read it opens as its preview image" },
+      { "type": "dxf", "description": "DXF drawing from a CAD app" },
+      { "type": "vectorcraft", "description": "VectorCraft document saved earlier" },
+      { "type": "png", "description": "PNG image to trace or draw over" },
+      { "type": "jpg", "description": "JPEG image to trace or draw over" }
+    ],
+    "returns": [
+      { "type": "svg", "description": "Vector drawing as SVG" },
+      { "type": "pdf", "description": "Vector drawing as PDF, one page per artboard" },
+      { "type": "png", "description": "Rendered artboard or render_preview PNG" },
+      { "type": "jpg", "description": "Rendered artboard as JPEG" },
+      { "type": "eps", "description": "Vector drawing as EPS" },
+      { "type": "ai", "description": "Illustrator-compatible .ai file" },
+      { "type": "vectorcraft", "description": "VectorCraft document to continue editing later" }
+    ]
+  }
+}

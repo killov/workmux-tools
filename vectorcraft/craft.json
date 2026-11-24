@@ -1,0 +1,13 @@
+{
+  "app": "vectorcraft",
+  "name": "VectorCraft",
+  "repo": "storytold/vectorcraft",
+  "version": "0.24.1",
+  "sha256": {
+    "x86_64": "ae6733083d2819efe980d76d41d1908d40fe487bb9a5e7679292b53fd8dc49d7",
+    "aarch64": "2a2584a9dc110d540a1debf92a41fb20c7ce3c4403518a80bf0ac35edc089611"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_", "^inspect_ui$", "^type_text$", "^answer_dialog$", "^open_panel$", "^invoke_menu$"],
+  "callTimeoutMs": 300000
+}

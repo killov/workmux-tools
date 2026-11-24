@@ -5,8 +5,8 @@
 // (one editing session) talking MCP over stdio, with /work as its automation read and write root. This server
 // forwards tools and resources to it and enforces the WorkMux plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
-//   - files never travel inline: images the child returns (render_preview) are written into WORK_DIR and only
-//     their paths are returned,
+//   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
+//     (dataBase64) are written into WORK_DIR and only their paths are returned,
 //   - every call has a timeout, unknown sessions get 404, SIGTERM shuts down within seconds.
 
 import { createServer } from "node:http";
@@ -61,11 +61,11 @@ const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
 // something else there, e.g. a vector path name, and the child resolves relative files beneath its roots anyway.
 const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "output", "dir", "directory", "folder"]);
 // Tools that answer with an inline image.
-const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview"]);
+const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "screenshot"]);
 
 const WORKMUX_NOTE = [
   `WorkMux: this ${APP_NAME} server runs headless in a container. Files live in /work only:`,
-  "every path you pass (doc_open, doc_save, doc_export, export dirs, file paths inside command params)",
+  "every path you pass (to open, save and export files, export dirs, file paths inside command params)",
   "must be inside /work; relative paths resolve against /work.",
   "Tools never return file contents: render_preview saves a PNG into /work and returns its path.",
   "The command registry has hundreds of commands: always call command_list with a filter (e.g. {\"filter\":\"crop\"}), never unfiltered.",
@@ -146,11 +146,42 @@ function externalizeContent(tool, result) {
       const file = path.join(WORK_DIR, `${tool}-${stamp()}.${extFor(block.resource.mimeType)}`);
       fs.writeFileSync(file, Buffer.from(block.resource.blob, "base64"));
       content.push({ type: "text", text: `Resource ${block.resource.uri} (${block.resource.mimeType || "binary"}) saved to ${file}.` });
+    } else if (block.type === "text" && typeof block.text === "string" && block.text.includes('"dataBase64"')) {
+      content.push({ ...block, text: externalizeJsonData(tool, block.text) });
     } else {
       content.push(block);
     }
   }
   return { ...result, content };
+}
+
+// An export without a destination (VectorCraft's export, document.export in command_run/command_batch) answers
+// JSON with the file as {"format": ..., "dataBase64": ...}; every such object gets a file in WORK_DIR and its
+// `path` instead.
+function externalizeJsonData(tool, text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return text;
+  }
+  const walk = (node) => {
+    if (Array.isArray(node)) return node.map(walk);
+    if (!node || typeof node !== "object") return node;
+    const out = {};
+    for (const [key, v] of Object.entries(node)) {
+      if (key === "dataBase64" && typeof v === "string") {
+        const format = typeof node.format === "string" && /^[a-z0-9]+$/.test(node.format) ? node.format : "bin";
+        const ext = format === "png8" ? "png" : format;
+        out.path = path.join(WORK_DIR, `${tool}-${stamp()}.${ext}`);
+        fs.writeFileSync(out.path, Buffer.from(v, "base64"));
+      } else {
+        out[key] = walk(v);
+      }
+    }
+    return out;
+  };
+  return JSON.stringify(walk(value), null, 2);
 }
 
 // Adjust the child's tool list for WorkMux: no bridge-only tools, valid names only, path semantics in descriptions.
@@ -164,7 +195,8 @@ function adaptTools(tools) {
     }
     const tool = structuredClone(t);
     for (const [key, prop] of Object.entries(tool.inputSchema?.properties || {})) {
-      if (FILE_KEYS.has(key)) prop.description = `${prop.description || "File path"} (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})`;
+      // A key of the same name can hold something else, e.g. VectorCraft add_text.path is a path object id.
+      if (FILE_KEYS.has(key) && [prop.type].flat().includes("string")) prop.description = `${prop.description || "File path"} (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})`;
     }
     if (IMAGE_TOOLS.has(tool.name)) {
       tool.description = `${tool.description} The PNG is saved into ${WORK_DIR} and its path returned instead of an inline image.`;
