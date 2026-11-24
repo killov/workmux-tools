@@ -1,10 +1,10 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
-// `fileKeys`, `base64Keys`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
-// `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as its
-// automation read and write root when the engine has them (`engineRoots`). This server forwards tools and resources
-// to it and enforces the WorkMux plugin contract on top:
+// `fileKeys`, `base64Keys`, `encodeMp3`), so the code is the same for every Craft plugin. Every MCP session gets its
+// own headless `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as
+// its automation read and write root when the engine has them (`engineRoots`). This server forwards tools and
+// resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
 //   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
 //     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned,
@@ -12,9 +12,10 @@
 
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -87,13 +88,29 @@ const EXT_BY_FORMAT = new Map(Object.entries({
 }));
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot"]);
+// An engine that bounces audio but cannot write MP3 (SoundCraft) gets encode_mp3 from this server, run with lame.
+const LAME = env.CRAFT_LAME_BIN || "lame";
+const execFileAsync = promisify(execFile);
+const MP3_TOOL = {
+  name: "encode_mp3",
+  description: `Encodes a WAV file (16/24-bit PCM or 32-bit float, e.g. from bounce_mix) to MP3 (CBR) with lame and returns the MP3's path and size. Both files are inside ${WORK_DIR}.`,
+  inputSchema: {
+    type: "object",
+    properties: {
+      path: { type: "string", description: `Source WAV file (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})` },
+      out: { type: "string", description: `Target .mp3 file (inside ${WORK_DIR}); default: the source's name with .mp3 next to it. An existing file is replaced.` },
+      bitrate_kbps: { type: "integer", minimum: 32, maximum: 320, description: "Bit rate in kbit/s, default 192" },
+    },
+    required: ["path"],
+  },
+};
 
 const WORKMUX_NOTE = [
   `WorkMux: this ${APP_NAME} server runs headless in a container. Files live in /work only:`,
   "every path you pass (to open, save and export files, export dirs, file paths inside command params)",
   "must be inside /work; relative paths resolve against /work.",
-  "Tools never return file contents: render_preview saves a PNG into /work and returns its path.",
-  "The command registry has hundreds of commands: always call command_list with a filter (e.g. {\"filter\":\"crop\"}), never unfiltered.",
+  "Tools never return file contents: previews and exports are saved into /work and returned as paths.",
+  "The command registry has hundreds of commands: always list commands with a filter (e.g. {\"filter\":\"crop\"}), never unfiltered.",
   "To hand a file to the user, download it from /work with plugin_download_file.",
   "Save your work into /work after each stage: a new MCP session starts with no open document.",
 ].join(" ");
@@ -254,6 +271,26 @@ function adaptTools(tools) {
   return kept;
 }
 
+// encode_mp3 with the arguments from prepareArgs (path and out are absolute paths in WORK_DIR by then).
+async function encodeMp3(args, signal) {
+  const fail = (text) => ({ content: [{ type: "text", text: `encode_mp3: ${text}` }], isError: true });
+  if (typeof args.path !== "string" || !fs.statSync(args.path, { throwIfNoEntry: false })?.isFile()) return fail(`path must be a WAV file inside ${WORK_DIR}`);
+  if (args.out !== undefined && typeof args.out !== "string") return fail("out must be a path");
+  const out = resolveInWork(args.out ?? args.path.replace(/(\.[^./]*)?$/, ".mp3"), "encode_mp3.out");
+  if (!/\.mp3$/i.test(out)) return fail(`out ${out} must end with .mp3`);
+  if (out === args.path) return fail("out must differ from path");
+  const kbps = args.bitrate_kbps ?? 192;
+  if (!Number.isInteger(kbps) || kbps < 32 || kbps > 320) return fail("bitrate_kbps must be an integer from 32 to 320");
+  try {
+    await execFileAsync(LAME, ["--quiet", "-b", String(kbps), args.path, out], { timeout: CALL_TIMEOUT_MS, signal });
+  } catch (err) {
+    // A failed or killed lame leaves a partial MP3 behind.
+    fs.rmSync(out, { force: true });
+    return fail(err.killed ? `lame did not finish within ${Math.round(CALL_TIMEOUT_MS / 1000)} s` : (err.stderr || err.message).trim().slice(-500));
+  }
+  return { content: [{ type: "text", text: JSON.stringify({ path: out, bytes: fs.statSync(out).size }, null, 2) }] };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Sessions: one <app>-cli child per MCP session
 
@@ -317,7 +354,7 @@ function createProxyServer(sess) {
         all.push(...page.tools);
         cursor = page.nextCursor;
       } while (cursor);
-      sess.tools = adaptTools(all);
+      sess.tools = [...adaptTools(all), ...(CRAFT.encodeMp3 ? [MP3_TOOL] : [])];
     }
     return { tools: sess.tools };
   });
@@ -327,6 +364,7 @@ function createProxyServer(sess) {
     let args;
     try {
       args = prepareArgs(name, req.params.arguments);
+      if (CRAFT.encodeMp3 && name === MP3_TOOL.name) return await encodeMp3(args, extra.signal);
     } catch (err) {
       if (err instanceof PathError) return { content: [{ type: "text", text: err.message }], isError: true };
       throw err;

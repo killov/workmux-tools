@@ -1,4 +1,5 @@
-// Tests of the Craft bridge (server.mjs) against fake-cli.mjs: path confinement, inline exports, session cleanup.
+// Tests of the Craft bridge (server.mjs) against fake-cli.mjs: path confinement, inline exports, encode_mp3, session
+// cleanup.
 //
 //   npm ci --prefix craft-common && node --test craft-common/test/bridge.test.mjs
 
@@ -13,6 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const COMMON = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const FAKE_CLI = path.join(COMMON, "test", "fake-cli.mjs");
+const FAKE_LAME = path.join(COMMON, "test", "fake-lame.mjs");
 const ACCEPT = "application/json, text/event-stream";
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -37,11 +39,11 @@ async function waitFor(check, what, ms = 5_000) {
 }
 
 // A bridge in its own temp dir (server.mjs reads craft.json next to itself) with fake-cli.mjs as the engine.
-async function startBridge({ engineRoots = true, env = {} } = {}) {
+async function startBridge({ engineRoots = true, encodeMp3 = false, env = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3 }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -93,6 +95,10 @@ async function openSession(bridge) {
   let id = 1;
   return {
     id: res.sessionId,
+    async list() {
+      const r = await post(bridge, { jsonrpc: "2.0", id: ++id, method: "tools/list" }, { sessionId: res.sessionId });
+      return r.json.result.tools.map((t) => t.name);
+    },
     async call(name, args) {
       const r = await post(bridge, { jsonrpc: "2.0", id: ++id, method: "tools/call", params: { name, arguments: args } }, { sessionId: res.sessionId });
       assert.equal(r.status, 200);
@@ -203,6 +209,75 @@ describe("inline exports", () => {
     assert.equal(JSON.parse(r.text).dataBase64, undefined);
     assert.match(r.text, /unsupported export format \\"exe\\"/);
     assert.deepEqual(exports(), before);
+  });
+});
+
+describe("encode_mp3", () => {
+  let bridge;
+  let sess;
+  before(async () => {
+    bridge = await startBridge({ encodeMp3: true, env: { CRAFT_LAME_BIN: FAKE_LAME } });
+    sess = await openSession(bridge);
+    fs.writeFileSync(path.join(bridge.work, "mix.wav"), "RIFF");
+  });
+  after(() => bridge.stop());
+
+  test("is listed only with encodeMp3 in craft.json", async () => {
+    assert.ok((await sess.list()).includes("encode_mp3"));
+    const plain = await startBridge();
+    try {
+      assert.ok(!(await (await openSession(plain)).list()).includes("encode_mp3"));
+    } finally {
+      await plain.stop();
+    }
+  });
+
+  test("writes <name>.mp3 next to the source by default", async () => {
+    const r = await sess.call("encode_mp3", { path: "mix.wav" });
+    assert.equal(r.isError, undefined, r.text);
+    const out = path.join(bridge.work, "mix.mp3");
+    assert.deepEqual(JSON.parse(r.text), { path: out, bytes: 11 });
+    assert.equal(fs.readFileSync(out, "utf8"), "-b 192 RIFF");
+  });
+
+  test("passes the bit rate and an explicit out", async () => {
+    const r = await sess.call("encode_mp3", { path: path.join(bridge.work, "mix.wav"), out: "sub/../x.MP3", bitrate_kbps: 320 });
+    assert.equal(r.isError, undefined, r.text);
+    assert.equal(fs.readFileSync(path.join(bridge.work, "x.MP3"), "utf8"), "-b 320 RIFF");
+  });
+
+  test("refuses paths outside /work, also through a symlink", async () => {
+    fs.rmSync(path.join(bridge.work, "link"), { force: true });
+    fs.symlinkSync(os.tmpdir(), path.join(bridge.work, "link"));
+    for (const [args, re] of [
+      [{ path: "/etc/passwd" }, /encode_mp3\.path .*outside/],
+      [{ path: "mix.wav", out: "/tmp/x.mp3" }, /encode_mp3\.out .*outside/],
+      [{ path: "mix.wav", out: "link/x.mp3" }, /encode_mp3\.out .*symlink/],
+    ]) {
+      const r = await sess.call("encode_mp3", args);
+      assert.equal(r.isError, true, JSON.stringify(args));
+      assert.match(r.text, re);
+    }
+  });
+
+  test("refuses a missing source, an out without .mp3 and a bad bit rate", async () => {
+    for (const [args, re] of [
+      [{ path: "none.wav" }, /path must be a WAV file/],
+      [{ path: "mix.wav", out: "mix.wav" }, /must end with \.mp3/],
+      [{ path: "mix.wav", bitrate_kbps: 1000 }, /bitrate_kbps/],
+    ]) {
+      const r = await sess.call("encode_mp3", args);
+      assert.equal(r.isError, true, JSON.stringify(args));
+      assert.match(r.text, re);
+    }
+  });
+
+  test("a failing lame leaves no partial MP3 and its message is returned", async () => {
+    fs.writeFileSync(path.join(bridge.work, "bad.wav"), "FAIL");
+    const r = await sess.call("encode_mp3", { path: "bad.wav" });
+    assert.equal(r.isError, true);
+    assert.match(r.text, /Unsupported data format/);
+    assert.equal(fs.existsSync(path.join(bridge.work, "bad.mp3")), false);
   });
 });
 

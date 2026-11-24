@@ -1,0 +1,36 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "soundcraft",
+  "name": "SoundCraft",
+  "description": "Headless digital audio workstation (SoundCraft from ArtCraft, open source, written in Rust). Imports WAV, MP3, FLAC and OGG audio onto tracks, edits clips — strip silence, trim, separate, move, fades, clip gain — and mixes tracks with volume, pan, EQ, dynamics and reverb plugins and automation through the 480+ commands of the desktop app, bounces the mix to WAV or FLAC with optional peak normalization and encodes it to MP3.",
+  "instructions": "SoundCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's audio to /work and import it: import_audio {\"path\":\"/work/in.wav\"} (WAV, MP3, FLAC, OGG, AIFF) returns the track and clip ids. Pass \"track\" to put it on an existing track and \"at\" for its position.\n2. Find the command: list_commands {\"filter\":\"silence\"} (also \"trim\", \"fade\", \"gain\", \"move\", \"separate\", \"automation\"…). Always pass a filter; never list them all. Each entry tells its params.\n3. Run it: execute {\"command\":\"edit.select_all\"}, then execute {\"command\":\"edit.strip_silence\",\"params\":{\"threshold_db\":-48}}. Several steps at once go through batch {\"calls\":[{\"command\":...,\"params\":{...}}, ...]}. Undo with execute {\"command\":\"edit.undo\"}.\n4. Check the result: inspect_session {\"detail\":\"full\"} lists the tracks and their clips (id, start, length). Editing keeps the clips where they were, so after strip_silence move the clip to the start: execute {\"command\":\"edit.move_clips\",\"params\":{\"clips\":[<id>],\"to\":0}}.\n5. Export: bounce_mix {\"path\":\"/work/out.wav\",\"normalize\":true,\"bit_depth\":\"16\",\"start\":0,\"end\":<length>}. Always pass \"end\" (the largest clip \"end\" in inspect_session after the move): without it the whole session length is rendered and removed silence comes back as silence. \"normalize\" peaks the mix at -0.1 dBFS. FLAC with \"format\":\"flac\" and a .flac path. Use a new file name for every export.\n6. MP3: encode_mp3 {\"path\":\"/work/out.wav\",\"out\":\"/work/out.mp3\"} (\"bitrate_kbps\" 32–320, default 192).\n7. To continue later: save_session {\"path\":\"/work/<name>.scraft\"} and open_session it in a later session.\n8. Hand the result over: download it from /work with plugin_download_file.\n\nPositions are samples of the session (48 kHz; imports are resampled) or {\"seconds\":x}. All paths must be inside /work; relative paths resolve against /work. A new MCP session (e.g. after a reconnect) starts with an empty session, so save .scraft files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "wav", "description": "Audio recording, music, voice-over" },
+      { "type": "mp3", "description": "Audio recording, music, voice-over" },
+      { "type": "flac", "description": "Lossless audio" },
+      { "type": "ogg", "description": "Ogg Vorbis audio" },
+      { "type": "scraft", "description": "SoundCraft session saved earlier" }
+    ],
+    "returns": [
+      { "type": "wav", "description": "Bounced mix (16/24-bit PCM or 32-bit float)" },
+      { "type": "mp3", "description": "Bounced mix encoded to MP3" },
+      { "type": "flac", "description": "Bounced mix as lossless FLAC" },
+      { "type": "scraft", "description": "SoundCraft session to continue editing later" }
+    ]
+  }
+}

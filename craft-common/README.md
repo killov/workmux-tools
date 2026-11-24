@@ -62,6 +62,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
+| `encodeMp3` | optional, default `false`; `true` adds the bridge's own `encode_mp3` tool for an engine that bounces audio but cannot write MP3 (SoundCraft) — see below; put `lame` into `aptPackages` |
 
 ## Paths
 
@@ -86,6 +87,14 @@ An export without a destination answers JSON with the file in `dataBase64` (or `
 `/work` with the extension of its `format` and answers the `path` instead. A `format` outside the known export formats
 (`EXT_BY_FORMAT` in `server.mjs`) or an answer that does not parse is dropped and the call fails: file bytes never
 reach the bot inline.
+
+## MP3 export
+
+With `"encodeMp3": true` the bridge lists one tool of its own, `encode_mp3 {path, out?, bitrate_kbps?}`, and runs it
+without the child: `lame --quiet -b <kbps> <path> <out>` (no shell, the call timeout applies). Both paths go through
+the same `/work` check as every other argument; `out` defaults to the source's name with `.mp3` next to it, must end
+with `.mp3` and differ from `path`. The answer is `{path, bytes}`; a failed encode removes the partial file and
+answers `lame`'s message. `CRAFT_LAME_BIN` overrides the binary (the tests use `test/fake-lame.mjs`).
 
 ## Sessions
 
@@ -117,7 +126,8 @@ Edit the files in `craft-common/`, run `node craft-common/sync.mjs` and commit `
 regenerated files of every Craft plugin. Never edit a generated file in a plugin folder: the gate refuses it. A
 version bump of one plugin is a change of its `craft.json` followed by the same sync.
 
-The bridge tests run `server.mjs` against a fake CLI (`test/fake-cli.mjs`; `test/` is not copied into the plugins):
+The bridge tests run `server.mjs` against a fake CLI (`test/fake-cli.mjs`) and a fake `lame` (`test/fake-lame.mjs`;
+`test/` is not copied into the plugins):
 
 ```bash
 npm ci --prefix craft-common

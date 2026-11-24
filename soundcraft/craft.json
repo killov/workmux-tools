@@ -1,0 +1,14 @@
+{
+  "app": "soundcraft",
+  "name": "SoundCraft",
+  "repo": "storytold/soundcraft",
+  "version": "0.20.1",
+  "sha256": {
+    "x86_64": "a217c7f65bb55ef4d7417f1c204244d974f25d6b779477727c440800d8256081",
+    "aarch64": "1371317b5f59c04f5edfb1436faece5c5df58f1669cc37a8177c7862bd315569"
+  },
+  "aptPackages": ["lame"],
+  "hideTools": ["^screenshot$", "^ui_", "^menu_invoke$", "^click$", "^drag$", "^key$"],
+  "callTimeoutMs": 300000,
+  "encodeMp3": true
+}
