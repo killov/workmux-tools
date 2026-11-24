@@ -34,6 +34,7 @@ function loadCraft(dir) {
   if (!Array.isArray(craft.aptPackages) || !craft.aptPackages.every((p) => /^[a-z0-9][a-z0-9.+-]+$/.test(p))) problems.push("aptPackages must be a list of Debian package names");
   if (!Array.isArray(craft.hideTools)) problems.push("hideTools must be a list of regular expressions");
   if (!Number.isInteger(craft.callTimeoutMs) || craft.callTimeoutMs <= 0) problems.push("callTimeoutMs must be a positive integer");
+  if ("engineRoots" in craft && typeof craft.engineRoots !== "boolean") problems.push("engineRoots must be true or false");
   if (problems.length) throw new Error(`${dir}/craft.json: ${problems.join("; ")}`);
   return craft;
 }

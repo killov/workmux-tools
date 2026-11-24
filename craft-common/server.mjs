@@ -1,12 +1,13 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
-// The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`), so the
-// code is the same for every Craft plugin. Every MCP session gets its own headless `<app>-cli mcp` child process
-// (one editing session) talking MCP over stdio, with /work as its automation read and write root. This server
-// forwards tools and resources to it and enforces the WorkMux plugin contract on top:
+// The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`,
+// `engineRoots`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
+// `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as its
+// automation read and write root when the engine has them (`engineRoots`). This server forwards tools and resources
+// to it and enforces the WorkMux plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it,
 //   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
-//     (dataBase64) are written into WORK_DIR and only their paths are returned,
+//     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned,
 //   - every call has a timeout, unknown sessions get 404, SIGTERM shuts down within seconds.
 
 import { createServer } from "node:http";
@@ -60,6 +61,18 @@ const APP_ENV_PREFIX = `${SLUG.toUpperCase()}_`;
 // objects (command_run params, command_batch steps) only absolute paths are checked: a relative value can be
 // something else there, e.g. a vector path name, and the child resolves relative files beneath its roots anyway.
 const FILE_KEYS = new Set(["path", "file", "filename", "file_path", "out", "output", "dir", "directory", "folder"]);
+// An engine without --automation-read-root/--automation-write-root (FilmCraft) reads and writes wherever it is
+// told, so this server is the only fence: nested relative values are checked as well (they resolve against the
+// child's cwd, WORK_DIR), a few more keys name files in its commands (file.projectManager.destination, the scratch
+// disks, template paths, media.autoRelink from/to), and lists of files (media_import.paths, file.import.paths)
+// become absolute paths in WORK_DIR, as the engine wants them.
+const ENGINE_ROOTS = CRAFT.engineRoots ?? true;
+const NESTED_FILE_KEYS = ENGINE_ROOTS
+  ? FILE_KEYS
+  : new Set([...FILE_KEYS, "destination", "template", "captured", "videoPreviews", "audioPreviews", "autoSave", "from", "to"]);
+const FILE_LIST_KEYS = new Set(["paths", "files"]);
+// JSON keys of file bytes in the child's answers.
+const BASE64_KEYS = new Set(["dataBase64", "pngBase64"]);
 // Tools that answer with an inline image.
 const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "screenshot"]);
 
@@ -104,15 +117,20 @@ function resolveInWork(value, what) {
   return abs;
 }
 
-function checkNestedPaths(node, where) {
-  if (Array.isArray(node)) {
-    node.forEach((v, i) => checkNestedPaths(v, `${where}[${i}]`));
-  } else if (node && typeof node === "object") {
-    for (const [k, v] of Object.entries(node)) {
-      if (typeof v === "string" && FILE_KEYS.has(k) && path.isAbsolute(v)) resolveInWork(v, `${where}.${k}`);
-      else checkNestedPaths(v, `${where}.${k}`);
-    }
+// Check a nested argument value under `key` (null for list items) and return it with lists of files rewritten.
+function prepareNested(key, value, where) {
+  if (typeof value === "string") {
+    if (NESTED_FILE_KEYS.has(key) && (!ENGINE_ROOTS || path.isAbsolute(value))) resolveInWork(value, where);
+    return value;
   }
+  if (Array.isArray(value)) {
+    const files = !ENGINE_ROOTS && FILE_LIST_KEYS.has(key);
+    return value.map((v, i) => (files && typeof v === "string" ? resolveInWork(v, `${where}[${i}]`) : prepareNested(null, v, `${where}[${i}]`)));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, prepareNested(k, v, `${where}.${k}`)]));
+  }
+  return value;
 }
 
 function stamp() {
@@ -125,10 +143,10 @@ function extFor(mime) {
 
 // Rewrite tool arguments: top-level file arguments become absolute paths in WORK_DIR, nested ones are checked.
 function prepareArgs(tool, args) {
-  const out = { ...(args || {}) };
-  for (const [key, value] of Object.entries(out)) {
-    if (typeof value === "string" && FILE_KEYS.has(key)) out[key] = resolveInWork(value, `${tool}.${key}`);
-    else checkNestedPaths(value, `${tool}.${key}`);
+  const out = {};
+  for (const [key, value] of Object.entries(args || {})) {
+    const where = `${tool}.${key}`;
+    out[key] = typeof value === "string" && FILE_KEYS.has(key) ? resolveInWork(value, where) : prepareNested(key, value, where);
   }
   return out;
 }
@@ -146,7 +164,7 @@ function externalizeContent(tool, result) {
       const file = path.join(WORK_DIR, `${tool}-${stamp()}.${extFor(block.resource.mimeType)}`);
       fs.writeFileSync(file, Buffer.from(block.resource.blob, "base64"));
       content.push({ type: "text", text: `Resource ${block.resource.uri} (${block.resource.mimeType || "binary"}) saved to ${file}.` });
-    } else if (block.type === "text" && typeof block.text === "string" && block.text.includes('"dataBase64"')) {
+    } else if (block.type === "text" && typeof block.text === "string" && [...BASE64_KEYS].some((k) => block.text.includes(`"${k}"`))) {
       content.push({ ...block, text: externalizeJsonData(tool, block.text) });
     } else {
       content.push(block);
@@ -156,8 +174,8 @@ function externalizeContent(tool, result) {
 }
 
 // An export without a destination (VectorCraft's export, document.export in command_run/command_batch) answers
-// JSON with the file as {"format": ..., "dataBase64": ...}; every such object gets a file in WORK_DIR and its
-// `path` instead.
+// JSON with the file as {"format": ..., "dataBase64": ...}, FilmCraft's graphics.template.thumbnail without a path
+// as {"pngBase64": ...}; every such object gets a file in WORK_DIR and its `path` instead.
 function externalizeJsonData(tool, text) {
   let value;
   try {
@@ -170,8 +188,8 @@ function externalizeJsonData(tool, text) {
     if (!node || typeof node !== "object") return node;
     const out = {};
     for (const [key, v] of Object.entries(node)) {
-      if (key === "dataBase64" && typeof v === "string") {
-        const format = typeof node.format === "string" && /^[a-z0-9]+$/.test(node.format) ? node.format : "bin";
+      if (BASE64_KEYS.has(key) && typeof v === "string") {
+        const format = key === "pngBase64" ? "png" : typeof node.format === "string" && /^[a-z0-9]+$/.test(node.format) ? node.format : "bin";
         const ext = format === "png8" ? "png" : format;
         out.path = path.join(WORK_DIR, `${tool}-${stamp()}.${ext}`);
         fs.writeFileSync(out.path, Buffer.from(v, "base64"));
@@ -215,7 +233,7 @@ let shuttingDown = false;
 async function startBackend() {
   const transport = new StdioClientTransport({
     command: CRAFT_CLI,
-    args: ["mcp", "--automation-read-root", WORK_DIR, "--automation-write-root", WORK_DIR],
+    args: ENGINE_ROOTS ? ["mcp", "--automation-read-root", WORK_DIR, "--automation-write-root", WORK_DIR] : ["mcp"],
     cwd: WORK_DIR,
     env: { ...getDefaultEnvironment(), ...appEnv() },
     stderr: "pipe",

@@ -59,13 +59,20 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `aptPackages` | extra Debian packages the CLI needs at runtime (check with `ldd`); `tini` is always installed |
 | `hideTools` | regular expressions of tools not offered to bots (the bridge-only ones need the desktop app) |
 | `callTimeoutMs` | default limit of one tool call (`CRAFT_CALL_TIMEOUT_MS` overrides it) |
+| `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
+
+With `"engineRoots": false` the child runs as plain `<app>-cli mcp` in `/work` and the bridge is the only fence
+around `/work`: file keys inside `command_run` params and `command_batch` steps are checked also when relative,
+`destination`, `template`, the scratch disk keys and `from`/`to` count as file keys there, and string lists under
+`paths`/`files` (top level and nested) are refused outside `/work` and rewritten to absolute paths.
 
 ## New Craft plugin
 
 1. Pick the release: the newest non-prerelease on `https://github.com/storytold/<app>/releases`. Download its `.deb`
    once, extract `./usr/bin/<app>-cli` (`dpkg-deb --fsys-tarfile <deb> | tar -x ./usr/bin/<app>-cli`), check
    `ldd` (libraries beyond libc go to `aptPackages`; never X11/Wayland — the headless engine renders on the CPU),
-   and run `<app>-cli mcp --automation-read-root /tmp/w --automation-write-root /tmp/w` to see its tools.
+   and run `<app>-cli mcp --automation-read-root /tmp/w --automation-write-root /tmp/w` to see its tools (when it
+   answers "unknown mcp option", the engine has no roots: run `<app>-cli mcp` and set `"engineRoots": false`).
 2. `mkdir <app>` and write `<app>/craft.json` (the checksums from `SHA256SUMS.txt`).
 3. `node craft-common/sync.mjs` — writes `server.mjs`, `meminfo.c`, `package.json`, `package-lock.json` and
    `Dockerfile` into `<app>/`.

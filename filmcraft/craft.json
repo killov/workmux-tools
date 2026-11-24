@@ -1,0 +1,14 @@
+{
+  "app": "filmcraft",
+  "name": "FilmCraft",
+  "repo": "storytold/filmcraft",
+  "version": "0.20.1",
+  "sha256": {
+    "x86_64": "5667c7505c91d2ad9de3c4acb15cb02fc9f138fae74dce9c7c5f08bc29edb3a8",
+    "aarch64": "2cd2d9601a80c6496ccdecd289723ab4b98f24159fc9bb524b5b333a8e79dee4"
+  },
+  "aptPackages": [],
+  "hideTools": ["^ui_"],
+  "callTimeoutMs": 900000,
+  "engineRoots": false
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "filmcraft",
+  "name": "FilmCraft",
+  "description": "Headless video editor (FilmCraft from ArtCraft, open source, written in Rust). Imports MP4, MOV, WebM and MKV video, WAV/MP3 audio and still images, builds sequences on a multi-track timeline, cuts, trims and places clips, adds titles and shapes, transitions, effects, color grading (Lumetri), audio mixing and captions, runs any of its 700+ editor commands, renders PNG frames and exports H.264 MP4, ProRes/DNxHR MOV, GIF, WAV and MP3.",
+  "instructions": "FilmCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the clips, audio and stills to /work and import them: media_import {\"paths\":[\"/work/a.mp4\",\"/work/b.mp4\"]} returns their item ids (e.g. [1,2]).\n2. Create a sequence from the first clip, so its size and frame rate are taken over: command_run {\"id\":\"file.newSequence\",\"params\":{\"name\":\"cut\",\"fromItem\":1}}.\n3. Put the clips on the timeline one after another: command_run {\"id\":\"timeline.place\",\"params\":{\"items\":[1,2],\"track\":\"V1\",\"seconds\":0,\"insert\":false}}.\n4. Edit. A title for 3 s: command_run {\"id\":\"graphics.newText\",\"params\":{\"text\":\"Hello\",\"seconds\":3,\"time\":0,\"track\":\"new\",\"size\":72}}. Everything else is an engine command: command_list {\"filter\":\"razor\"} (also \"transition\", \"effects\", \"graphics\", \"audio\", \"lumetri\", \"captions\"…) — always pass a filter, the registry has 700+ commands — then command_run {\"id\":...,\"params\":{...}}, or command_batch {\"steps\":[...]} for several. Times are in seconds (\"seconds\") or ticks (254016000000 per second).\n5. Check the result: sequence_inspect shows tracks, clips and their ids; render_preview {\"seconds\":1} saves a PNG of that frame into /work and returns its path (no inline image) — download it to look at it or to show it.\n6. Export: command_run {\"id\":\"file.exportMedia\",\"params\":{\"path\":\"/work/out.mp4\",\"wait\":true}} renders H.264/AAC MP4 and returns when the file is written (without \"wait\":true it returns at once; poll command_run {\"id\":\"jobs.list\"} then). Other formats with \"format\": \"prores\" or \"dnxhr\" (.mov), \"gif\", \"wav\", \"mp3\". WebM export is not available. Use a new file name for every export. To continue editing later: command_run {\"id\":\"file.saveAs\",\"params\":{\"path\":\"/work/<name>.fcproj\"}} and file.open it in a later session.\n7. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. A new MCP session (e.g. after a reconnect) starts with an empty project, so save .fcproj files after each stage and reopen them then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 4096,
+    "cpus": 4
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "mp4", "description": "Video clip (H.264, HEVC, AV1, VP9…)" },
+      { "type": "mov", "description": "QuickTime video clip (H.264, ProRes, DNxHR…)" },
+      { "type": "webm", "description": "WebM video clip (VP8, VP9, AV1)" },
+      { "type": "mkv", "description": "Matroska video clip" },
+      { "type": "wav", "description": "Audio: music, voice-over, sound effects" },
+      { "type": "mp3", "description": "Audio: music, voice-over, sound effects" },
+      { "type": "png", "description": "Still image or logo to place on the timeline" },
+      { "type": "jpg", "description": "Still image to place on the timeline" },
+      { "type": "gif", "description": "Still or animated GIF" },
+      { "type": "srt", "description": "Captions to import" },
+      { "type": "fcproj", "description": "FilmCraft project saved earlier" }
+    ],
+    "returns": [
+      { "type": "mp4", "description": "Edited video as H.264/AAC MP4" },
+      { "type": "mov", "description": "Edited video as ProRes or DNxHR MOV" },
+      { "type": "gif", "description": "Animated GIF of the sequence" },
+      { "type": "png", "description": "render_preview frame or exported still" },
+      { "type": "wav", "description": "Audio mixdown" },
+      { "type": "mp3", "description": "Audio mixdown" },
+      { "type": "fcproj", "description": "FilmCraft project to continue editing later" }
+    ]
+  }
+}
