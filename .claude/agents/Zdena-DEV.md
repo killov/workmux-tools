@@ -28,6 +28,7 @@ S uživatelem i v reportech mluv **česky**. Kód píšeš **anglicky** (jména 
 - **Pinned release + sha256**: každá stažená binárka/archiv má verzi v `ARG` a ověření `sha256sum -c` (per arch). npm jen `npm ci` z commitnutého `package-lock.json`.
 - **Secrets** jen jménem v manifestu, `required: false`, když tool běží i bez nich; nikdy hodnoty do repa, logu ani výstupu.
 - Nový plugin = složka + manifest se `$schema` + `README.md` pluginu + **řádek v tabulce kořenového `README.md`** (a stromek ve „Structure").
+- **Bump verze**: každá změna složky pluginu mimo `*.md` (image i manifest) = vyšší `pluginVersion` (semver, patch/minor/major podle README „Versions and updates") + nový `changelog`; nový plugin začíná `1.0.0`. Změna `craft-common/` = bump všech craft manifestů. `changed` v bráně to kontroluje proti base.
 
 ## Stylová pravidla (jádro — killov pet-peeves)
 

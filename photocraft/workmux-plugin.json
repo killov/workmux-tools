@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "photocraft",
   "name": "PhotoCraft",
   "description": "Headless PSD-compatible image editor (PhotoCraft from ArtCraft, open source, written in Rust). Opens photos and layered documents (PSD/PSB, TIFF, PNG, JPEG, WebP, HEIC, XCF, Krita, OpenRaster, SVG…), edits them with 500+ commands of the desktop app — crop and resize, layers and masks, adjustment layers, filters (sharpen, blur, noise…), brightness/contrast, levels, curves, type — renders PNG previews and exports PNG, JPEG, WebP, TIFF, PSD and more.",

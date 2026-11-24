@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "gws",
   "name": "Google Workspace",
   "description": "Google Workspace APIs through the official Google Workspace CLI (gws): Drive, Sheets, Docs, Slides, Gmail, Calendar, Tasks, People, Chat, Forms, Meet and more. A few generic tools run any gws command, describe API methods and show help; files are exchanged through /work. Authenticates with an OAuth access token from WorkMux, an access token secret or a service account key.",

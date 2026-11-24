@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "solidcraft",
   "name": "SolidCraft CAD",
   "description": "Headless parametric 3D CAD (SolidCraft, open source, written in Rust). Design mechanical parts from sketches, extrusions, primitives, holes and fillets, measure them, render PNG previews and export STL, STEP, 3MF, OBJ, GLB or IGES. Opens .sc designs, STEP and mesh files from /work.",

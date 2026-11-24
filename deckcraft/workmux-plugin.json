@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "deckcraft",
   "name": "DeckCraft",
   "description": "Headless presentation editor (DeckCraft from ArtCraft, open source, written in Rust). Builds and edits slide decks with layouts, text, shapes, pictures, tables, charts, themes, transitions and animations; opens PPTX; saves PPTX and exports PDF and PNG slides.",

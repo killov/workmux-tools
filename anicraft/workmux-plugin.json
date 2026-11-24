@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "anicraft",
   "name": "AniCraft",
   "description": "Headless 2D vector animation in the style of Flash/Animate (AniCraft from ArtCraft, open source, written in Rust). Draws shapes and paths, builds symbols, keyframes, motion and shape tweens on a timeline with layers and scenes, imports SVG, images and sound, runs any of its engine commands, renders PNG frames and exports animated GIF, MP4, WebM, Lottie JSON, SVG and PNG frames, sprite sheets and HTML.",

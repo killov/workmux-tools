@@ -39,6 +39,16 @@ The container contract is in [README.md](README.md#the-contract) — read it bef
 - `instructions` in the manifest is the bot's step-by-step guide: upload the input to `/work`, call the tools,
   hand the result over with `plugin_download_file`.
 
+## Versions
+
+- `pluginVersion` in the manifest is semver, a new plugin starts at `1.0.0`; `version` stays `1` (manifest format).
+- Every change of a plugin folder other than documentation (`*.md`, `docs/`) raises `pluginVersion` and rewrites
+  `changelog`: patch = fix or pin bump, minor = new tool/argument/optional secret or upstream release, major =
+  removed or renamed tool, slug change, new required secret. See [README.md](README.md#versions-and-updates).
+- A change of `craft-common/` bumps the manifest of every ArtCraft plugin (the manifests are not generated).
+- `persist` (+ `migrate`) only for data that must outlive the instance and updates; the Dockerfile creates the
+  directory outside `/work` and `chown`s it to the runtime user.
+
 ## README table
 
 Adding or renaming a plugin updates the root [README.md](README.md): the folder tree under "Structure" and a row
@@ -48,6 +58,7 @@ Adding or renaming a plugin updates the root [README.md](README.md): the folder 
 
 ```bash
 npm ci --prefix .claude/scripts                       # once
+node .claude/scripts/plugin-gate.mjs changed          # changed plugins + pluginVersion bump vs. merge-base with master
 node .claude/scripts/plugin-gate.mjs validate [dir]   # manifest vs. schema + the conventions above
 node .claude/scripts/plugin-gate.mjs docker <dir>     # docker build → run → MCP smoke (needs docker)
 node .claude/scripts/plugin-gate.mjs smoke <mcp-url>  # MCP smoke against a running container

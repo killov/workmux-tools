@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "gridcraft",
   "name": "GridCraft",
   "description": "Headless spreadsheet (GridCraft from ArtCraft, open source, written in Rust). Formulas, tables, sorting and filtering, pivot tables and charts; opens XLSX, ODS and CSV; saves XLSX and CSV and exports PDF.",

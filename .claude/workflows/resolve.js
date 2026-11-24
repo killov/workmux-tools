@@ -53,7 +53,8 @@ const MAX_CREEP_ROUNDS = 3
 // kolo dotklo JEN jich, stavět kontejner a pouštět ukázkovou úlohu je čistá režie.
 // `workmux-plugin.json` sem NEPATŘÍ — `instructions`/`description` čte bot za běhu.
 // Totéž pravidlo (soubory mimo *.md) používá `plugin-gate.mjs changed` pro
-// `runtimePlugins`, tedy pro to, kde GATE staví image.
+// `runtimePlugins`, tedy pro to, kde GATE staví image; navíc tam vynechá manifest,
+// který se proti base liší jen v `pluginVersion`/`changelog` (image je stejný).
 const NO_RUNTIME_SURFACE = [
   /(^|\/)docs?\//i,
   /\.mdx?$/i,
@@ -258,6 +259,7 @@ for (round = 1; round <= MAX_ROUNDS; round++) {
           ].filter(Boolean).join(' ')
         : null,
       `Naimplementuj / oprav kód podle plánu a feedbacku. Feedback od CR a QA je závazný — projdi ho bod po bodu. Working tree je společný deliverable, needituj mimo scope.`,
+      `VERZE: změna složky pluginu (mimo *.md) = bump \`pluginVersion\` (patch/minor/major podle README „Versions and updates") + nový \`changelog\` v jejím manifestu; brána to kontroluje proti base.`,
       `BRÁNA JDE PO TOBĚ: samostatný gate agent hned po tobě zvaliduje manifesty, postaví image změněných pluginů a pustí MCP smoke test. Ty si před vrácením výsledku pusť levnou část sám: \`${GATE_SCRIPT} validate <složka>\` a \`node --check\` na změněné .mjs/.js. Docker build nech na bráně (trvá minuty); když něco chytí, přijde ti to jako feedback do dalšího kola.`,
     ].filter(Boolean).join('\n\n'),
     { agentType: 'Zdena-DEV', phase: 'Smyčka', schema: DEV_SCHEMA, label: `kolo ${round}: DEV` },
@@ -278,7 +280,7 @@ for (round = 1; round <= MAX_ROUNDS; round++) {
     [
       `Nejsi vývojář — kód NEEDITUJ. Jsi měřicí brána. Spusť přesně tyhle kroky v kořeni repa a vrať PRAVDIVÝ výsledek. Každý příkaz skriptu končí řádkem \`GATE_JSON {...}\` — rozhoduj podle něj, ne podle dojmu.`,
       `0) Když chybí \`.claude/scripts/node_modules\`, spusť \`npm ci --prefix .claude/scripts --no-audit --no-fund\`.`,
-      `1) \`${GATE_SCRIPT} changed${BASE ? ` --base ${BASE}` : ''}\` → \`changedFiles\` a \`plugins\` opiš z GATE_JSON; poznamenej si \`runtimePlugins\`.`,
+      `1) \`${GATE_SCRIPT} changed${BASE ? ` --base ${BASE}` : ''}\` → \`changedFiles\` a \`plugins\` opiš z GATE_JSON; poznamenej si \`runtimePlugins\`. \`changed\` zároveň kontroluje, že každá změněná složka pluginu má proti base vyšší \`pluginVersion\` (\`versionChecks\`) — FAIL z ní je červená pro DEV, opiš error řádky do \`details\`.`,
       `2) \`${GATE_SCRIPT} validate <všechny složky z plugins>\` (když je \`plugins\` prázdné, bez argumentů = všechny pluginy) → \`manifestOk\` = (changed.ok && validate.ok).`,
       `3) Pro KAŽDOU složku z \`runtimePlugins\`: \`${GATE_SCRIPT} docker <složka>\`.`,
       `   - exit 0/1 → \`buildOk\`/\`smokeOk\` podle GATE_JSON (\`step: "build"\` = build červený).`,

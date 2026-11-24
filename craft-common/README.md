@@ -23,7 +23,9 @@ differs from this folder.
 | `sync.mjs` | — the generator |
 
 The manifest (`workmux-plugin.json`) and the plugin's `README.md` are written by hand: description, instructions and
-file types differ per application.
+file types differ per application. A change here changes the image of every Craft plugin, so it also raises
+`pluginVersion` (and `changelog`) in each of their manifests by hand; the plugin gate fails otherwise. `version` in
+`craft.json` is the upstream release, not the plugin version.
 
 ## Working memory in a container
 

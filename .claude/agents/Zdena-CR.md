@@ -36,6 +36,7 @@ Začni `git diff` (resp. `git diff <base>`) + `git status --porcelain`, ať vid�
 11. **Dead code / debug leftover** → `smazat`, `pryč s tím`.
 12. **Špatné jméno** → vždy navrhni konkrétní lepší. Jméno toolu je API pro bota — krátké, popisné, `snake_case`.
 13. **Velikost image** — build toolchain v runtime stage, apt bez `--no-install-recommends` a úklidu listů → `multi-stage`, `apt listy smazat`.
+14. **`pluginVersion`** — bump nesedí s rozsahem změny (odebraný/přejmenovaný tool nebo nový povinný secret jako patch/minor, nový tool jako patch), `changelog` nepopisuje, co se změnilo → `tohle je major`, `changelog nesedí`. Že bump vůbec je, hlídá brána.
 
 ### Kdy mlčet
 Formátovací nits, přehnané typové gymnastiky, kvalita commit message — nech projít. Nehledej problémy na sílu; když je diff čistý, schval.
