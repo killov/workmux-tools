@@ -60,6 +60,7 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `hideTools` | regular expressions of tools not offered to bots (the bridge-only ones need the desktop app) |
 | `callTimeoutMs` | default limit of one tool call (`CRAFT_CALL_TIMEOUT_MS` overrides it) |
 | `engineRoots` | optional, default `true`; `false` for an engine without `--automation-read-root`/`--automation-write-root` (FilmCraft) — see below |
+| `relativePaths` | optional, default `false`; `true` for an engine that takes only forward-slash paths relative to its roots and refuses absolute ones (TextureCraft) — see below; cannot be combined with `encodeMp3` |
 | `fileKeys` | optional; further argument keys that name files or folders in the app's commands (LightCraft `folder.move` `into`, `folder.create` `parent`, …), checked like `path` inside `command_run` params and `command_batch` steps |
 | `nonFileArgs` | optional; tool name → top-level argument keys of that tool that look like file keys but are not files (EffectCraft `set_property` `path` is a property path like `transform/opacity`: `{"set_property": ["path"]}`); they are passed on unchanged and checked like any other string (see below) |
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
@@ -79,6 +80,12 @@ fails the call with an error that names the argument:
   unchanged (a relative `path` there can be an object id, e.g. VectorCraft's `path-3`, which resolves inside),
 - any other string, under any key and at any depth, is checked when it looks like a path: absolute, `..`, or
   containing a `../` step. A text that starts with `/` is refused as well; that is the price of the general rule.
+
+With `"relativePaths": true` the checked file paths reach the child relative to `/work` instead (`/work/out/x.glb`
+and `./out/x.glb` become `out/x.glb`, `/work` itself becomes `.`), at the top level and under the file keys inside
+`command_run` params and `command_batch` steps alike. TextureCraft refuses an absolute path even inside its root, and
+a path with a `.` or `..` step. The engine's answers name files relative to `/work` as well; the bridge leaves them as
+they are and the plugin's instructions say so.
 
 With `"engineRoots": false` the child runs as plain `<app>-cli mcp` in `/work` and the bridge is the only fence
 around `/work`: file keys inside `command_run` params and `command_batch` steps are checked also when relative,

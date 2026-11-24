@@ -39,11 +39,11 @@ async function waitFor(check, what, ms = 5_000) {
 }
 
 // A bridge in its own temp dir (server.mjs reads craft.json next to itself) with fake-cli.mjs as the engine.
-async function startBridge({ engineRoots = true, encodeMp3 = false, env = {} } = {}) {
+async function startBridge({ engineRoots = true, relativePaths = false, encodeMp3 = false, env = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, encodeMp3, base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, relativePaths, encodeMp3,base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -192,6 +192,37 @@ for (const engineRoots of [true, false]) {
     });
   });
 }
+
+describe("relativePaths", () => {
+  let bridge;
+  let sess;
+  before(async () => {
+    bridge = await startBridge({ relativePaths: true });
+    sess = await openSession(bridge);
+  });
+  after(() => bridge.stop());
+
+  test("top-level file paths reach the engine relative to /work, /work itself as .", async () => {
+    const r = await sess.call("echo", { path: `${bridge.work}/x.glb`, file: "./sub/../sub/x.glb", dir: bridge.work, out: "." });
+    assert.equal(r.isError, undefined, r.text);
+    assert.deepEqual(JSON.parse(r.text), { path: "x.glb", file: "sub/x.glb", dir: ".", out: "." });
+  });
+
+  test("nested file paths are rewritten the same way, other values pass unchanged", async () => {
+    const args = { id: "file.exportMesh", params: { path: `${bridge.work}/out/x.glb`, steps: [{ params: { dir: "./tex/" } }], name: "Layer 1", file: "" } };
+    const r = await sess.call("echo", args);
+    assert.equal(r.isError, undefined, r.text);
+    assert.deepEqual(JSON.parse(r.text), { id: "file.exportMesh", params: { path: "out/x.glb", steps: [{ params: { dir: "tex" } }], name: "Layer 1", file: "" } });
+  });
+
+  test("paths outside /work are still refused", async () => {
+    for (const args of [{ path: "../x" }, { path: "/etc/x" }, { params: { path: "/etc/x" } }, { params: { file: "../x" } }]) {
+      const r = await sess.call("echo", args);
+      assert.equal(r.isError, true, JSON.stringify(args));
+      assert.match(r.text, /outside/);
+    }
+  });
+});
 
 describe("inline exports", () => {
   let bridge;

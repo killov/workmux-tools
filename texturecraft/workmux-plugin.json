@@ -1,0 +1,59 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "slug": "texturecraft",
+  "name": "TextureCraft",
+  "description": "Headless 3D texture painter (TextureCraft from ArtCraft, open source, written in Rust). Imports meshes (GLB/glTF, FBX, OBJ, USD/USDZ, DAE, Alembic, PLY, STL) with one texture set per material, applies smart materials (wood, metal, stone, fabric…), paints strokes, fills layers from images, bakes mesh maps (ambient occlusion, curvature, thickness), renders PNG previews and exports PBR texture sets (PNG, JPEG, TGA, TIFF, EXR) and the textured mesh as GLB, USDZ, USD or OBJ.",
+  "instructions": "TextureCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the user's model to /work and import it: mesh_import {\"path\":\"model.glb\",\"resolution\":1024} (.glb, .gltf with its .bin and images beside it, .fbx, .obj, .dae, .usd/.usda/.usdc/.usdz, .abc, .ply, .stl). A saved project opens with project_open {\"path\":\"model.tcraft\"}; a built-in mesh with project_new {\"mesh\":\"crate\"}. Paths are relative to /work (\"model.glb\") or absolute inside it (\"/work/model.glb\"). Keep the resolution at 1024 unless the user wants more: memory grows with resolution × texture sets.\n2. Inspect: session_inspect lists the texture sets (one per material of the mesh), the layer stack and the active set.\n3. Find materials and commands: command_run {\"id\":\"material.list\"} lists the smart materials (wood, wood_oak, wood_walnut, wood_pine, plywood, metals, stone, fabric…); command_list {\"filter\":\"layer\"} (also \"mask\", \"bake\", \"textureSet\") shows command ids and params. The registry is large, so always pass a filter.\n4. Apply a material to the whole model: material.apply works on the active texture set only, so for every texture set i from session_inspect run command_run {\"id\":\"textureSet.select\",\"params\":{\"ts\":i}} and then command_run {\"id\":\"material.apply\",\"params\":{\"material\":\"wood_oak\"}} (or both as one command_batch {\"steps\":[...]}). To paint, paint_stroke {\"points\":[[x,y],...],\"color\":\"#8b5a2b\",\"size\":10,\"viewport\":[1024,1024]} with points in the pixels of a viewport_render of the same size. A user's texture image: resource_import {\"path\":\"wood.png\"} returns its name, then command_run {\"id\":\"layer.add.image\",\"params\":{\"name\":\"<name>\",\"projection\":\"triplanar\"}}. A smart material file: material_load {\"path\":\"oak.tcmat\"}. Undo with command_run {\"id\":\"edit.undo\"}.\n5. Optional: bake {\"ts\":\"all\",\"maps\":[\"ambientOcclusion\",\"curvature\"],\"resolution\":1024} bakes the mesh maps that make the edge wear and dirt of smart materials (rust, *_weathered, *_worn…) follow the shape. It runs on the CPU and takes about a minute; always name the maps and the resolution, the defaults bake every map and can run out of time.\n6. Check the result: viewport_render {\"width\":1024,\"height\":1024} (optionally \"yaw\"/\"pitch\" in degrees, \"view\":\"2d\" for the UV view) saves a PNG into /work and returns its path — download it to look at it or to show it. Rendering runs on the CPU, so keep previews at 1024 px or less.\n7. Export: mesh_export {\"format\":\"glb\",\"path\":\"out/model-textured.glb\"} writes the mesh with its textures embedded (also usdz; obj and usda/usdc write the textures next to the file). textures_export {\"dir\":\"textures\",\"format\":\"png\"} writes the texture maps of every set (baseColor, roughness, metallic, normal, height; \"size\" and \"preset\" optional). Use a new file name for every export. Engine commands with file paths (file.exportMesh, file.save…) are disabled in command_run: use these tools.\n8. Hand the result over: the paths in the answers are relative to /work (\"out/model-textured.glb\" is /work/out/model-textured.glb); download them with plugin_download_file.\n\nAll paths must be inside /work. A new MCP session (e.g. after a reconnect) starts with an empty project, so save your work with project_save {\"path\":\"model.tcraft\"} after each stage and reopen it with project_open then. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 2048,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "glb", "description": "Binary glTF model to texture" },
+      { "type": "gltf", "description": "glTF model (upload its .bin and images next to it)" },
+      { "type": "fbx", "description": "FBX model to texture" },
+      { "type": "obj", "description": "Wavefront OBJ model to texture" },
+      { "type": "dae", "description": "COLLADA model to texture" },
+      { "type": "usd", "description": "USD stage to texture" },
+      { "type": "usda", "description": "USD stage (text) to texture" },
+      { "type": "usdc", "description": "USD stage (binary) to texture" },
+      { "type": "usdz", "description": "USDZ package to texture" },
+      { "type": "abc", "description": "Alembic model to texture" },
+      { "type": "ply", "description": "PLY mesh to texture" },
+      { "type": "stl", "description": "STL mesh to texture (no UVs of its own)" },
+      { "type": "tcraft", "description": "TextureCraft project saved earlier" },
+      { "type": "tcmat", "description": "TextureCraft smart material" },
+      { "type": "png", "description": "Texture or image to fill a layer with" },
+      { "type": "jpg", "description": "Texture or image to fill a layer with" },
+      { "type": "tga", "description": "Texture to fill a layer with" },
+      { "type": "tiff", "description": "Texture to fill a layer with (.tif/.tiff)" },
+      { "type": "webp", "description": "Texture or image to fill a layer with" },
+      { "type": "exr", "description": "OpenEXR texture" }
+    ],
+    "returns": [
+      { "type": "glb", "description": "Textured model with the textures embedded" },
+      { "type": "usdz", "description": "Textured model as a USDZ package (AR Quick Look)" },
+      { "type": "usda", "description": "Textured USD stage, textures next to it" },
+      { "type": "usdc", "description": "Textured USD stage (binary), textures next to it" },
+      { "type": "obj", "description": "Model as OBJ with its .mtl and textures next to it" },
+      { "type": "png", "description": "Texture maps (baseColor, roughness, metallic, normal, height) or viewport_render preview" },
+      { "type": "jpg", "description": "Texture maps as JPEG" },
+      { "type": "tga", "description": "Texture maps as TGA" },
+      { "type": "tiff", "description": "Texture maps as TIFF" },
+      { "type": "exr", "description": "Texture maps as OpenEXR" },
+      { "type": "tcraft", "description": "TextureCraft project to continue later" },
+      { "type": "tcmat", "description": "Smart material saved from a layer" }
+    ]
+  }
+}

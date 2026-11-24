@@ -35,6 +35,9 @@ function loadCraft(dir) {
   if (!Array.isArray(craft.hideTools)) problems.push("hideTools must be a list of regular expressions");
   if (!Number.isInteger(craft.callTimeoutMs) || craft.callTimeoutMs <= 0) problems.push("callTimeoutMs must be a positive integer");
   if ("engineRoots" in craft && typeof craft.engineRoots !== "boolean") problems.push("engineRoots must be true or false");
+  if ("relativePaths" in craft && typeof craft.relativePaths !== "boolean") problems.push("relativePaths must be true or false");
+  // encode_mp3 runs lame in the bridge's own working directory and needs absolute paths.
+  if (craft.relativePaths && craft.encodeMp3) problems.push("relativePaths and encodeMp3 cannot be combined");
   if ("fileKeys" in craft && !(Array.isArray(craft.fileKeys) && craft.fileKeys.every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push("fileKeys must be a list of argument key names");
   if ("nonFileArgs" in craft && !(craft.nonFileArgs && typeof craft.nonFileArgs === "object" && !Array.isArray(craft.nonFileArgs) && Object.values(craft.nonFileArgs).every((keys) => Array.isArray(keys) && keys.every((k) => /^[A-Za-z_]\w*$/.test(k))))) problems.push("nonFileArgs must map tool names to lists of argument key names");
   if ("base64Keys" in craft && !(Array.isArray(craft.base64Keys) && craft.base64Keys.every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push("base64Keys must be a list of JSON key names");

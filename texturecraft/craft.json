@@ -1,0 +1,14 @@
+{
+  "app": "texturecraft",
+  "name": "TextureCraft",
+  "repo": "storytold/texturecraft",
+  "version": "0.6.1",
+  "sha256": {
+    "x86_64": "c1b3a4a43eb2f1e3e90b92047a3e81fc14ee85278b5e8f0352480ac4655389b9",
+    "aarch64": "5fc8412da4f5c5a9ef0bb8da647fc1b99a3a4d1a0e2ae37dc7434be909bf0c1d"
+  },
+  "aptPackages": ["libvulkan1", "mesa-vulkan-drivers"],
+  "hideTools": ["^ui_", "^viewport_screenshot$"],
+  "callTimeoutMs": 600000,
+  "relativePaths": true
+}
