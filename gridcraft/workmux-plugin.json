@@ -1,8 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
-  "pluginVersion": "1.0.0",
-  "changelog": "First versioned release.",
+  "pluginVersion": "1.0.1",
+  "changelog": "Shared craft-common base: new optional argBase64Keys, jsonTextKeys and previewTools options (for DesignCraft); no change in this plugin's tools.",
   "slug": "gridcraft",
   "name": "GridCraft",
   "description": "Headless spreadsheet (GridCraft from ArtCraft, open source, written in Rust). Formulas, tables, sorting and filtering, pivot tables and charts; opens XLSX, ODS and CSV; saves XLSX and CSV and exports PDF.",

@@ -39,11 +39,11 @@ async function waitFor(check, what, ms = 5_000) {
 }
 
 // A bridge in its own temp dir (server.mjs reads craft.json next to itself) with fake-cli.mjs as the engine.
-async function startBridge({ engineRoots = true, relativePaths = false, encodeMp3 = false, mcpArgs, env = {} } = {}) {
+async function startBridge({ engineRoots = true, relativePaths = false, encodeMp3 = false, mcpArgs, env = {}, craft = {} } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fakecraft-"));
   fs.copyFileSync(path.join(COMMON, "server.mjs"), path.join(dir, "server.mjs"));
   fs.symlinkSync(path.join(COMMON, "node_modules"), path.join(dir, "node_modules"));
-  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, mcpArgs, relativePaths, encodeMp3,base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] } }));
+  fs.writeFileSync(path.join(dir, "craft.json"), JSON.stringify({ app: "fakecraft", name: "FakeCraft", hideTools: [], callTimeoutMs: 10_000, engineRoots, mcpArgs, relativePaths, encodeMp3, base64Formats: { png: "png" }, nonFileArgs: { set_property: ["path"] }, ...craft }));
   const work = path.join(dir, "work");
   const pidFile = path.join(dir, "cli.pid");
   const port = await freePort();
@@ -277,6 +277,87 @@ describe("inline exports", () => {
     assert.doesNotMatch(r.text, /aGk=/);
     assert.match(r.text, /inline file data is not png/);
     assert.deepEqual(fs.readdirSync(bridge.work).filter((f) => f.startsWith("echo-")), []);
+  });
+});
+
+describe("argBase64Keys", () => {
+  let bridge;
+  let sess;
+  before(async () => {
+    bridge = await startBridge({ craft: { base64Formats: { base64: "pdf" }, argBase64Keys: ["base64"], jsonTextKeys: ["script"], previewTools: ["place"] } });
+    sess = await openSession(bridge);
+  });
+  after(() => bridge.stop());
+
+  const pdf = Buffer.concat([Buffer.from("%PDF-1.7\n"), Buffer.alloc(64)]);
+
+  test("file bytes in arguments are refused at any level and in JSON text, without echoing them", async () => {
+    for (const [args, where] of [
+      [{ base64: "/9j/4AAQ" }, "place\\.base64"],
+      [{ command: "file.place", params: { base64: "iVBORw0KGgo=" } }, "place\\.params\\.base64"],
+      [{ commands: [{ command: "file.place", params: { base64: "iVBORw0KGgo=" } }] }, "place\\.commands\\[0\\]\\.params\\.base64"],
+      [{ script: 'file.place {"base64": "iVBORw0KGgo="}' }, "place\\.script"],
+    ]) {
+      const r = await sess.call("place", args);
+      assert.equal(r.isError, true, JSON.stringify(args));
+      assert.match(r.text, new RegExp(`^${where}: inline file content is not accepted`));
+      assert.doesNotMatch(r.text, /iVBOR|9j/);
+    }
+  });
+
+  test("a text outside jsonTextKeys may show the key", async () => {
+    const args = { command: "text.insert", params: { text: 'Send {"base64": "x"} to the API.' } };
+    const r = await sess.call("place", args);
+    assert.equal(r.isError, undefined, r.text);
+    assert.deepEqual(JSON.parse(r.text), args);
+  });
+
+  test("the key is not offered in the input schemas, previewTools describe the saved PNG", async () => {
+    const res = await post(bridge, { jsonrpc: "2.0", id: 50, method: "tools/list" }, { sessionId: sess.id });
+    const tools = res.json.result.tools;
+    const place = tools.find((t) => t.name === "place");
+    assert.deepEqual(Object.keys(place.inputSchema.properties), ["path"]);
+    assert.deepEqual(place.inputSchema.required, []);
+    assert.match(place.description, /PNG is saved into/);
+    assert.doesNotMatch(tools.find((t) => t.name === "echo").description, /PNG is saved into/);
+  });
+
+  test("command docs naming the key pass unchanged, as JSON and as text", async () => {
+    const json = await sess.call("describe", {});
+    assert.equal(json.isError, undefined, json.text);
+    assert.deepEqual(JSON.parse(json.text), { params: { path: "string", base64: "string" } });
+    const text = await sess.call("describe", { text: true });
+    assert.equal(text.isError, undefined, text.text);
+    assert.equal(text.text, 'file.place {"path": "string", "base64": "string"}');
+  });
+
+  test("file bytes under the key become a file, bytes of another format are refused", async () => {
+    const r = await sess.call("export_raw", { hex: pdf.toString("hex") });
+    assert.equal(r.isError, undefined, r.text);
+    const out = JSON.parse(r.text);
+    assert.equal(out.base64, undefined);
+    assert.match(out.path, /\.pdf$/);
+    assert.deepEqual(fs.readFileSync(out.path), pdf);
+    const zip = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(64)]);
+    const bad = await sess.call("export_raw", { hex: zip.toString("hex") });
+    assert.equal(bad.isError, true);
+    assert.match(bad.text, /inline file data is not pdf/);
+    assert.ok(!bad.text.includes(zip.toString("base64")), bad.text);
+  });
+
+  test("without argBase64Keys arguments pass and command docs naming a base64Formats key fail as before", async () => {
+    const plain = await startBridge({ craft: { base64Formats: { base64: "pdf" } } });
+    try {
+      const s = await openSession(plain);
+      // The argument reaches the engine; its echo is short bytes that are no PDF.
+      assert.match((await s.call("echo", { base64: "aGk=" })).text, /inline file data is not pdf/);
+      for (const args of [{}, { text: true }]) assert.equal((await s.call("describe", args)).isError, true, JSON.stringify(args));
+      const place = (await post(plain, { jsonrpc: "2.0", id: 50, method: "tools/list" }, { sessionId: s.id })).json.result.tools.find((t) => t.name === "place");
+      assert.deepEqual(place.inputSchema.required, ["base64"]);
+      assert.doesNotMatch(place.description, /PNG is saved into/);
+    } finally {
+      await plain.stop();
+    }
   });
 });
 

@@ -1,15 +1,16 @@
 // WorkMux plugin: an ArtCraft application (PhotoCraft, FilmCraft, …) behind a streamable HTTP MCP endpoint.
 //
 // The application comes from craft.json next to this file (`app`, `name`, `hideTools`, `callTimeoutMs`, `engineRoots`,
-// `mcpArgs`, `relativePaths`, `fileKeys`, `nonFileArgs`, `base64Keys`, `encodeMp3`), so the code is the same for every
-// Craft plugin. Every MCP session gets its own headless `<app>-cli mcp` child process (one editing session) talking MCP
-// over stdio in WORK_DIR, with /work as its automation read and write root when the engine has them (`engineRoots`). This
-// server forwards tools and resources to it (plus its own encode_mp3 with `encodeMp3`) and enforces the WorkMux
-// plugin contract on top:
+// `mcpArgs`, `relativePaths`, `fileKeys`, `nonFileArgs`, `base64Keys`, `base64Formats`, `argBase64Keys`, `jsonTextKeys`,
+// `previewTools`, `encodeMp3`), so the code is the same for every Craft plugin. Every MCP session gets its own headless
+// `<app>-cli mcp` child process (one editing session) talking MCP over stdio in WORK_DIR, with /work as its automation
+// read and write root when the engine has them (`engineRoots`). This server forwards tools and resources to it (plus
+// its own encode_mp3 with `encodeMp3`) and enforces the WorkMux plugin contract on top:
 //   - file paths are confined to WORK_DIR (/work); relative paths are resolved against it, and the child gets them
 //     relative to WORK_DIR when its engine refuses absolute ones (`relativePaths`),
 //   - files never travel inline: images the child returns (render_preview) and file bytes in its JSON answers
-//     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned,
+//     (dataBase64, pngBase64) are written into WORK_DIR and only their paths are returned; file bytes in arguments
+//     (`argBase64Keys`) are refused,
 //   - every call has a timeout, unknown sessions get 404, SIGTERM shuts down within seconds.
 
 import { createServer } from "node:http";
@@ -113,8 +114,21 @@ const MAGIC_BY_FORMAT = new Map(Object.entries({
   png: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
   pptx: Buffer.from([0x50, 0x4b, 0x03, 0x04]),
 }));
-// Tools that answer with an inline image.
-const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot", "viewport_render", "view_render"]);
+// `argBase64Keys` in craft.json names keys under which one app also takes file bytes in its arguments (DesignCraft
+// place_image.base64, file.place params): they are refused at any depth and removed from the tools' input schemas,
+// so files come in as paths only. In answers such a key that does not hold file bytes stays plain data: the app's
+// command docs describe the parameter as {"base64": "string"}.
+const ARG_BASE64_KEYS = new Set(CRAFT.argBase64Keys ?? []);
+const ARG_BASE64_ALT = [...ARG_BASE64_KEYS].join("|");
+const ARG_BASE64_RE = ARG_BASE64_KEYS.size ? new RegExp(`"(?:${ARG_BASE64_ALT})"\\s*:\\s*"`) : null;
+const ARG_BYTES_RE = ARG_BASE64_KEYS.size ? new RegExp(`"(?:${ARG_BASE64_ALT})"\\s*:\\s*"[A-Za-z0-9+/=]{64,}`) : null;
+// Canonical base64 of at least 48 bytes; shorter values or other text under an `argBase64Keys` key are no file.
+const FILE_BYTES_RE = /^(?=.{64})(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+// `jsonTextKeys` names string arguments holding JSON text (DesignCraft batch.script, lines of `command.id {json}`),
+// where an `argBase64Keys` key is refused as well; other text (a story's text) may show such a key.
+const JSON_TEXT_KEYS = new Set(CRAFT.jsonTextKeys ?? []);
+// Tools that answer with an inline image; `previewTools` in craft.json adds an app's own (DesignCraft render_page).
+const IMAGE_TOOLS = new Set(["render_preview", "doc_render_preview", "render_photo", "screenshot", "viewport_render", "view_render", ...(CRAFT.previewTools ?? [])]);
 // An engine that bounces audio but cannot write MP3 (SoundCraft) gets encode_mp3 from this server, run with lame.
 const LAME = env.CRAFT_LAME_BIN || "lame";
 const execFileAsync = promisify(execFile);
@@ -179,6 +193,10 @@ function resolveInWork(value, what) {
 
 // Check an argument value under `key` (null for list items) and return it with lists of files rewritten.
 function prepareNested(key, value, where) {
+  // Before the path check: base64 can start with "/" (JPEG "/9j/") and would be refused as a path.
+  if ((ARG_BASE64_KEYS.has(key) && value != null) || (JSON_TEXT_KEYS.has(key) && typeof value === "string" && ARG_BASE64_RE?.test(value))) {
+    throw new PathError(`${where}: inline file content is not accepted; upload the file to ${WORK_DIR} and pass its path`);
+  }
   if (typeof value === "string") {
     if (NESTED_FILE_KEYS.has(key) && value.trim() !== "") {
       const abs = resolveInWork(value, where);
@@ -253,6 +271,8 @@ function externalizeJsonData(tool, text) {
   try {
     value = JSON.parse(text);
   } catch {
+    // A text answer (a command listing) may name an `argBase64Keys` key; it passes when nothing like file bytes follows.
+    if (ARG_BYTES_RE && !ARG_BYTES_RE.test(text) && [...BASE64_KEYS].every((k) => ARG_BASE64_KEYS.has(k) || !text.includes(`"${k}"`))) return { text, error: false };
     return { text: `${tool} answered with inline file data that could not be parsed; it was dropped. Export with a path inside ${WORK_DIR}.`, error: true };
   }
   let error = false;
@@ -263,6 +283,10 @@ function externalizeJsonData(tool, text) {
     for (const [key, v] of Object.entries(node)) {
       // An app's own base64 key (e.g. `data`) only counts as file bytes next to a `format`; elsewhere it is plain data.
       if (BASE64_KEYS.has(key) && typeof v === "string" && !(APP_BASE64_KEYS.has(key) && typeof node.format !== "string")) {
+        if (ARG_BASE64_KEYS.has(key) && !FILE_BYTES_RE.test(v)) {
+          out[key] = v;
+          continue;
+        }
         const guessed = key !== "pngBase64" && typeof node.format !== "string";
         const format = key === "pngBase64" ? "png" : guessed ? BASE64_FORMATS.get(key) : node.format;
         const ext = typeof format === "string" && EXT_BY_FORMAT.get(format.toLowerCase());
@@ -299,7 +323,13 @@ function adaptTools(tools) {
       continue;
     }
     const tool = structuredClone(t);
-    for (const [key, prop] of Object.entries(tool.inputSchema?.properties || {})) {
+    const schema = tool.inputSchema;
+    // The bridge refuses file bytes in arguments, so the bot is not offered them (DesignCraft place_image.base64).
+    for (const key of ARG_BASE64_KEYS) {
+      if (schema?.properties) delete schema.properties[key];
+      if (Array.isArray(schema?.required)) schema.required = schema.required.filter((k) => k !== key);
+    }
+    for (const [key, prop] of Object.entries(schema?.properties || {})) {
       // A key of the same name can hold something else, e.g. VectorCraft add_text.path is a path object id.
       if (FILE_KEYS.has(key) && !isNonFileArg(tool.name, key) && [prop.type].flat().includes("string")) prop.description = `${prop.description || "File path"} (inside ${WORK_DIR}; a relative path resolves against ${WORK_DIR})`;
     }

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
+  "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First release: DesignCraft 0.21.1 page layout behind the craft-common bridge.",
+  "slug": "designcraft",
+  "name": "DesignCraft",
+  "description": "Headless page layout and publishing (DesignCraft from ArtCraft, open source, written in Rust; an InDesign alternative). Creates documents from presets (A4, Letter…) or opens DesignCraft projects, IDML and InDesign .indd/.indt files (converted to IDML), lays out text frames with columns, styles and threading, places images, PDF pages, Word/RTF/Markdown text and Excel tables through the same commands as the desktop app, renders page previews and exports print PDF (PDF/X-4, PDF/X-1a), PNG/JPEG pages, IDML and EPUB.",
+  "instructions": "DesignCraft runs headless in your own container; every file lives in /work.\n\n1. Upload the inputs to /work: images (PNG, JPEG, WebP, GIF, TIFF), PDFs to place as graphics, text (.txt, .docx, .rtf, .md) or Excel tables (.xlsx), or a document to edit (.designcraft, .idml, InDesign .indd/.indt).\n2. Create a document: new_document {\"preset\":\"A4\"} (also \"Letter\"…, or \"width\"/\"height\" in points; optional \"columns\", \"gutter\", \"margins\", \"facingPages\":false for single pages). Units are points (72 pt = 1 in); A4 is 595.28 x 841.89 pt with 36 pt margins, x to the right and y down from the top left corner of the first page. To edit an existing file: open_document {\"path\":\"/work/brochure.idml\"} (also .designcraft, or InDesign .indd/.indt, converted to IDML; inspect_document lists its pages, frames and stories).\n3. Text: execute {\"command\":\"frame.create\",\"params\":{\"rect\":[36,36,559,100],\"content\":\"text\",\"text\":\"Headline\"}} returns {\"id\":8,\"story\":9}; \\n starts a new paragraph. Typography applies to selected text: select it with execute {\"command\":\"text.select\",\"params\":{\"story\":9,\"anchor\":0,\"focus\":8}} (UTF-8 byte offsets; get_story shows the story's length), then execute {\"command\":\"type.char\",\"params\":{\"attrs\":{\"size\":36,\"fontStyle\":\"Bold\"}}} (paragraph attributes: list_commands {\"filter\":\"type.para\"}).\n4. Images: place_image {\"path\":\"/work/photo.png\",\"x\":36,\"y\":120,\"width\":523} (height follows the aspect ratio; \"frame\" places into an existing frame). A PDF page, a text file or an Excel table: execute {\"command\":\"file.place\",\"params\":{\"path\":\"/work/text.docx\",\"rect\":[36,470,559,806]}} (\"pdfPage\" for a PDF).\n5. Columns: right after frame.create, execute {\"command\":\"object.textFrameOptions\",\"params\":{\"columns\":2,\"gutter\":12}} sets the new frame's columns (or pass \"ids\":[frame id]).\n6. Everything else is a command, the same as in the desktop app: list_commands {\"filter\":\"style\"} (also \"type\", \"frame\", \"object\", \"layout\", \"table\"…) — always pass a filter, the registry has hundreds of commands — then execute {\"command\":...,\"params\":{...}}, or batch {\"commands\":[...]} for several (\"$0.id\" passes the id from step 0).\n7. Check: inspect_document {} (frames, columns, stories with \"overset\": true when text does not fit); render_page {\"page\":0} saves a PNG of the page into /work and returns its path (no inline image) — download it to look at it.\n8. Export: execute {\"command\":\"file.exportPdf\",\"params\":{\"path\":\"/work/flyer.pdf\"}} (\"standard\":\"x4\" or \"x1a\" for print, \"pages\":\"1-2\"); export_png {\"page\":0,\"path\":\"/work/page1.png\",\"scale\":2} (.png or .jpg); execute {\"command\":\"file.exportIdml\",\"params\":{\"path\":\"/work/flyer.idml\"}} or file.exportEpub. Always export with a path in /work (file.exportIdml/file.exportEpub without a path fail) and use a new file name for every export.\n9. Hand the result over: download it from /work with plugin_download_file.\n\nAll paths must be inside /work; relative paths resolve against /work. Files are passed as paths only: base64 content is refused. A new MCP session (e.g. after a reconnect) starts with no open document, so save your work with save_document {\"path\":\"/work/flyer.designcraft\"} after each stage and reopen it with open_document. The container and /work are deleted after the conversation is idle, so always download the results.",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "mcp": {
+    "port": 8080,
+    "path": "/mcp"
+  },
+  "resources": {
+    "memoryMb": 4096,
+    "cpus": 2
+  },
+  "idleMinutes": 30,
+  "files": {
+    "accepts": [
+      { "type": "designcraft", "description": "DesignCraft document to continue editing" },
+      { "type": "idml", "description": "InDesign Markup Language document to open (or place as a page)" },
+      { "type": "indd", "description": "InDesign document (.indd/.indt) to open, converted to IDML" },
+      { "type": "pdf", "description": "PDF page to place as a graphic (not opened as a document)" },
+      { "type": "png", "description": "PNG image to place" },
+      { "type": "jpg", "description": "JPEG image to place" },
+      { "type": "webp", "description": "WebP image to place" },
+      { "type": "gif", "description": "GIF image to place" },
+      { "type": "tiff", "description": "TIFF image (.tif/.tiff) to place" },
+      { "type": "txt", "description": "Plain text to place into a text frame" },
+      { "type": "docx", "description": "Word document to place as text" },
+      { "type": "rtf", "description": "RTF text to place" },
+      { "type": "md", "description": "Markdown text to place" },
+      { "type": "xlsx", "description": "Excel workbook to place as a table" }
+    ],
+    "returns": [
+      { "type": "pdf", "description": "Laid out document as PDF (also PDF/X-4, PDF/X-1a)" },
+      { "type": "png", "description": "Page as PNG (export_png or a render_page preview)" },
+      { "type": "jpg", "description": "Page as JPEG" },
+      { "type": "designcraft", "description": "DesignCraft document, to continue editing later" },
+      { "type": "idml", "description": "Document as IDML for InDesign" },
+      { "type": "epub", "description": "Document as EPUB" }
+    ]
+  }
+}

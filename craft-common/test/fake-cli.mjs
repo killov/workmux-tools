@@ -25,6 +25,13 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
     { name: "export_fmt", description: "Answers {format, dataBase64}.", inputSchema: anyArgs },
     { name: "export_png", description: "Answers {png, width} like DeckCraft's file.render.", inputSchema: anyArgs },
     { name: "set_property", description: "Answers its arguments as JSON; path is a property path.", inputSchema: { type: "object", properties: { path: { type: "string", description: "Property path" } } } },
+    { name: "export_raw", description: "Answers the bytes of `hex` as {base64} without a format.", inputSchema: anyArgs },
+    { name: "describe", description: "Answers command docs naming a base64 parameter, as text with `text`.", inputSchema: anyArgs },
+    {
+      name: "place",
+      description: "Takes a file as path or base64.",
+      inputSchema: { type: "object", properties: { path: { type: "string" }, base64: { type: "string" } }, required: ["base64"] },
+    },
   ],
 }));
 server.setRequestHandler(CallToolRequestSchema, (req) => {
@@ -36,6 +43,9 @@ server.setRequestHandler(CallToolRequestSchema, (req) => {
     export_bad: () => '{"format":"png","dataBase64":"aGVsbG8gd29ybGQ=',
     export_fmt: () => JSON.stringify({ format: args.format, dataBase64: "aGk=" }),
     export_png: () => JSON.stringify({ png: "iVBORw0KGgpoaQ==", width: 2 }),
+    export_raw: () => JSON.stringify({ base64: Buffer.from(args.hex, "hex").toString("base64") }),
+    describe: () => (args.text ? 'file.place {"path": "string", "base64": "string"}' : JSON.stringify({ params: { path: "string", base64: "string" } })),
+    place: () => JSON.stringify(args),
   }[req.params.name];
   if (!text) return { content: [{ type: "text", text: `unknown tool ${req.params.name}` }], isError: true };
   return { content: [{ type: "text", text: text() }] };

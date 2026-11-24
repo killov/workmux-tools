@@ -1,8 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
-  "pluginVersion": "1.0.0",
-  "changelog": "First versioned release.",
+  "pluginVersion": "1.0.1",
+  "changelog": "Shared craft-common base: new optional argBase64Keys, jsonTextKeys and previewTools options (for DesignCraft); no change in this plugin's tools.",
   "slug": "effectcraft",
   "name": "EffectCraft",
   "description": "Headless motion graphics and VFX compositor in the style of After Effects (EffectCraft from ArtCraft, open source, written in Rust). Builds compositions with text, shape and solid layers, animates them with keyframes and expressions, 2.5D/3D layers, masks and track mattes, applies effects (blur, glow, color correction…), imports video, images, After Effects projects (AEP) and Lottie, runs any of its engine commands, renders PNG frames and exports H.264 MP4, ProRes MOV, WebM, GIF, PNG sequences and Lottie.",

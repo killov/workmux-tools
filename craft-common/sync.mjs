@@ -45,6 +45,11 @@ function loadCraft(dir) {
   if ("base64Keys" in craft && !(Array.isArray(craft.base64Keys) && craft.base64Keys.every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push("base64Keys must be a list of JSON key names");
   if ("encodeMp3" in craft && typeof craft.encodeMp3 !== "boolean") problems.push("encodeMp3 must be true or false");
   if ("base64Formats" in craft && !(craft.base64Formats && typeof craft.base64Formats === "object" && !Array.isArray(craft.base64Formats) && Object.entries(craft.base64Formats).every(([k, f]) => /^[A-Za-z_]\w*$/.test(k) && typeof f === "string"))) problems.push("base64Formats must map JSON key names to export formats");
+  for (const key of ["argBase64Keys", "jsonTextKeys"]) {
+    if (key in craft && !(Array.isArray(craft[key]) && craft[key].every((k) => /^[A-Za-z_]\w*$/.test(k)))) problems.push(`${key} must be a list of argument key names`);
+  }
+  if (craft.jsonTextKeys?.length && !craft.argBase64Keys?.length) problems.push("jsonTextKeys needs argBase64Keys: they name the keys refused in the JSON text");
+  if ("previewTools" in craft && !(Array.isArray(craft.previewTools) && craft.previewTools.every((t) => /^[A-Za-z0-9_-]+$/.test(t)))) problems.push("previewTools must be a list of tool names");
   if (problems.length) throw new Error(`${dir}/craft.json: ${problems.join("; ")}`);
   return craft;
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
-  "pluginVersion": "1.0.0",
-  "changelog": "First versioned release.",
+  "pluginVersion": "1.0.1",
+  "changelog": "Shared craft-common base: new optional argBase64Keys, jsonTextKeys and previewTools options (for DesignCraft); no change in this plugin's tools.",
   "slug": "vectorcraft",
   "name": "VectorCraft",
   "description": "Headless vector illustration app (VectorCraft from ArtCraft, open source, written in Rust). Opens SVG, PDF, Illustrator (.ai), EPS, DXF and .vectorcraft documents or starts a blank artboard, draws shapes, Bézier paths and type, sets fills, strokes and gradients, applies live effects (drop shadow, glow, blur…), Pathfinder and transforms, runs any menu command of the desktop app, renders PNG previews and exports SVG, PDF, PNG, JPEG, EPS, AI and more.",

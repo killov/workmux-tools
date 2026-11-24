@@ -69,6 +69,9 @@ headroom follows the container's `resources.memoryMb`. Without a limit the file 
 | `base64Keys` | optional; further JSON keys of file bytes in the app's answers besides `dataBase64`/`pngBase64` (FigCraft `export` without a path answers `{"format": ..., "data": ...}`); next to a `format` each becomes a file in `/work` and its `path`, without one it stays plain data |
 | `encodeMp3` | optional, default `false`; `true` adds the bridge's own `encode_mp3` tool for an engine that bounces audio but cannot write MP3 (SoundCraft) — see below; put `lame` into `aptPackages` |
 | `base64Formats` | optional; JSON keys of file bytes in every answer of the app, also without a `format` next to them, mapped to the format of those bytes (DeckCraft `file.render` answers `{"png": ...}`, `file.saveBytes` `{"data": ...}`: `{"png": "png", "data": "deckcraft"}`); a `format` in the answer wins, bytes that do not match the mapped format are refused (see below) |
+| `argBase64Keys` | optional; argument keys under which the app also takes file bytes (DesignCraft `base64` in `place_image` and `file.place` params): refused at any depth (also in `execute` params and `batch` steps) and removed from the tools' input schemas, so files come in as paths only; in answers such a key that does not hold file bytes stays plain data (see below) |
+| `jsonTextKeys` | optional, needs `argBase64Keys`; string arguments holding JSON text (DesignCraft `batch` `script`, lines of `command.id {json}`), refused when they contain an `argBase64Keys` key with a string value; other text arguments may show such a key |
+| `previewTools` | optional; the app's tools that answer with an inline preview image besides `render_preview` & co. (DesignCraft `render_page`); their description tells the bot the PNG is saved into `/work` |
 
 ## Paths
 
@@ -106,6 +109,11 @@ reach the bot inline. A format taken from `base64Formats` (no `format` in the an
 bytes of the file when the bridge knows them (`pdf`, `png`, `pptx`; `MAGIC_BY_FORMAT`): one key can carry several
 formats (GridCraft's `base64` is a PDF from `file.exportPdf`, an XLSX or CSV from `file.saveBytes`), so bytes of
 another format are dropped and the call fails instead of saving them under a wrong extension.
+
+A key from `argBase64Keys` holds file bytes only as canonical base64 of at least 64 characters; any other value (the
+app's command docs answer `{"base64": "string"}`) stays plain data, and an answer that is not JSON passes unchanged
+when it names no other file bytes key and no such key is followed by a long base64 string. Without `argBase64Keys`
+both fail the call as described above (GridCraft).
 
 ## MP3 export
 

@@ -34,6 +34,7 @@ workmux-tools/
 ├── texturecraft/            TextureCraft — 3D texture painting (ArtCraft), built from craft-common/
 ├── materialcraft/           MaterialCraft — procedural PBR materials (ArtCraft), built from craft-common/
 ├── craft-anything/          Craft Anything — study how software works (ArtCraft, early alpha), built from craft-common/
+├── designcraft/             DesignCraft — page layout and publishing (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -59,6 +60,7 @@ workmux-tools/
 | [`texturecraft`](texturecraft/) | [TextureCraft](https://getartcraft.com/apps/texturecraft) 3D texture painting (ArtCraft): import GLB/FBX/OBJ/USD, smart materials, paint, bake mesh maps, render previews, export PNG texture sets and textured GLB/USDZ |
 | [`materialcraft`](materialcraft/) | [MaterialCraft](https://getartcraft.com/apps/materialcraft) procedural materials (ArtCraft): node graphs, open SBS/.mcraft, cook PBR maps, export PNG/EXR/TGA maps, .mcmat |
 | [`craft-anything`](craft-anything/) | [Craft Anything](https://getartcraft.com/apps/craft-anything) reverse engineering (ArtCraft, early alpha): open programs, APK/IPA/JAR/.NET/Electron and other files, triage, functions, strings, pseudo-C, evidence-backed report as Markdown/HTML |
+| [`designcraft`](designcraft/) | [DesignCraft](https://getartcraft.com/apps/designcraft) page layout and publishing (ArtCraft): new documents from presets or IDML/INDD, text frames with columns and styles, place images, PDF pages, Word text and Excel tables, export PDF (PDF/X-4, X-1a)/PNG/JPEG/IDML/EPUB |
 
 ## Add a plugin to WorkMux
 

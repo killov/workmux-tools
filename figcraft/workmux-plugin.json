@@ -1,8 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
-  "pluginVersion": "1.0.0",
-  "changelog": "First versioned release.",
+  "pluginVersion": "1.0.1",
+  "changelog": "Shared craft-common base: new optional argBase64Keys, jsonTextKeys and previewTools options (for DesignCraft); no change in this plugin's tools.",
   "slug": "figcraft",
   "name": "FigCraft",
   "description": "Headless interface design tool (FigCraft from ArtCraft, open source, written in Rust). Designs app and web screens with frames, auto layout, shapes, text, components, styles, variables and prototype links; opens FigCraft projects, .fig and .sketch files (best effort), SVG and images; exports PNG, JPEG, WebP, SVG and PDF and saves .figcraft projects.",

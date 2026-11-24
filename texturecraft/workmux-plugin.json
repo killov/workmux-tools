@@ -1,8 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
-  "pluginVersion": "1.0.0",
-  "changelog": "First versioned release.",
+  "pluginVersion": "1.0.1",
+  "changelog": "Shared craft-common base: new optional argBase64Keys, jsonTextKeys and previewTools options (for DesignCraft); no change in this plugin's tools.",
   "slug": "texturecraft",
   "name": "TextureCraft",
   "description": "Headless 3D texture painter (TextureCraft from ArtCraft, open source, written in Rust). Imports meshes (GLB/glTF, FBX, OBJ, USD/USDZ, DAE, Alembic, PLY, STL) with one texture set per material, applies smart materials (wood, metal, stone, fabric…), paints strokes, fills layers from images, bakes mesh maps (ambient occlusion, curvature, thickness), renders PNG previews and exports PBR texture sets (PNG, JPEG, TGA, TIFF, EXR) and the textured mesh as GLB, USDZ, USD or OBJ.",

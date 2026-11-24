@@ -1,6 +1,8 @@
 {
   "$schema": "https://app.workmux.com/schemas/workmux-plugin.v1.json",
   "version": 1,
+  "pluginVersion": "1.0.0",
+  "changelog": "First versioned release.",
   "slug": "craft-anything",
   "name": "Craft Anything",
   "description": "Headless reverse-engineering workbench (Craft Anything from ArtCraft, early alpha): studies how a program, app or file works (ELF/PE/Mach-O, .NET, Java/JAR, Android APK, iOS IPA, Electron/JS bundles, WebAssembly, firmware, databases, game files) — triage, functions, strings, pseudo-C, classes and resources — and writes an evidence-backed report as Markdown or HTML. Rebuilding a program and website capture are not available.",
