@@ -21,6 +21,7 @@ workmux-tools/
 ├── vectorcraft/             VectorCraft — vector illustration (ArtCraft), built from craft-common/
 ├── filmcraft/               FilmCraft — video editor (ArtCraft), built from craft-common/
 ├── lightcraft/              LightCraft — photo library and raw developer (ArtCraft), built from craft-common/
+├── pdfcraft/                PdfCraft — PDF workbench (ArtCraft), built from craft-common/
 ├── craft-common/            shared base of the ArtCraft plugins (not a plugin): server, Dockerfile template, sync.mjs
 └── <your-plugin>/ ...
 ```
@@ -33,6 +34,7 @@ workmux-tools/
 | [`vectorcraft`](vectorcraft/) | [VectorCraft](https://getartcraft.com/apps/vectorcraft) vector illustration (ArtCraft): open SVG/PDF/AI/EPS, draw shapes, paths and type, effects, Pathfinder, export SVG/PDF/PNG |
 | [`filmcraft`](filmcraft/) | [FilmCraft](https://getartcraft.com/apps/filmcraft) video editor (ArtCraft): import MP4/MOV/WebM, audio and stills, cut, titles, color, mix, export MP4/MOV/GIF |
 | [`lightcraft`](lightcraft/) | [LightCraft](https://getartcraft.com/apps/lightcraft) photo library and raw developer (ArtCraft): import RAW (DNG/CR3/NEF/ARW…), JPEG and TIFF, exposure, white balance, tone, crop, presets, export JPEG/TIFF/PNG |
+| [`pdfcraft`](pdfcraft/) | [PdfCraft](https://getartcraft.com/apps/pdfcraft) PDF workbench (ArtCraft): open, merge PDFs and images, split, reorder and rotate pages, password-protect, redact, watermark, fill forms, export PDF/PNG/text/Word |
 
 ## Add a plugin to WorkMux
 

@@ -1,0 +1,13 @@
+{
+  "app": "pdfcraft",
+  "name": "PdfCraft",
+  "repo": "storytold/pdfcraft",
+  "version": "0.22.0",
+  "sha256": {
+    "x86_64": "a7e0e781e55adc633b68b417ec9860115ccaa2cc636588f183ae03e66a5edcdb",
+    "aarch64": "7a1cc758e88e1d36320687493500cc91f24a4802db1fd936b349e98fdd10ac9a"
+  },
+  "aptPackages": [],
+  "hideTools": ["^printers$", "^printer_options$", "^printer_papers$", "^sign_windows_ids$", "^sign_keychain_ids$", "^ocr_"],
+  "callTimeoutMs": 300000
+}
